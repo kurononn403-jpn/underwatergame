@@ -34,6 +34,10 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 #o2Label.fart{color:var(--fartair)}
 #hp{background:linear-gradient(90deg,#e04848,var(--hp))}
 #gas{background:linear-gradient(90deg,#d9578a,var(--gas))}
+/* おなら呼吸に必要な量の目印（黄色い線）。足りていると光る */
+.gaswrap{position:relative}
+#gasMark{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1.5px;border-radius:2px;background:rgba(255,255,255,.35)}
+#gasMark.ready{background:var(--fartair);box-shadow:0 0 6px var(--fartair)}
 .low{animation:blink .5s steps(2) infinite}
 @keyframes blink{50%{opacity:.35}}
 #goal{background:var(--panel);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:8px 12px;font-size:13px;font-weight:800;line-height:1.35}
@@ -47,9 +51,17 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
   background:radial-gradient(circle at 35% 30%,#ffc6dc,#ff7fae 60%,#d9578a);color:#4a1028;
   box-shadow:0 6px 0 #a33a66,0 10px 24px rgba(0,0,0,.35)}
 #jetBtn.press{transform:translateY(4px);box-shadow:0 2px 0 #a33a66,0 4px 12px rgba(0,0,0,.35)}
-#breathBtn{right:calc(max(18px,env(safe-area-inset-right)) + 112px);bottom:calc(max(18px,env(safe-area-inset-bottom)) + 8px);width:76px;height:76px;font-size:13px;
-  background:radial-gradient(circle at 35% 30%,#fff3a8,#ffd83d 60%,#d1a40f);color:#4a3600;
+#breathBtn{right:calc(max(18px,env(safe-area-inset-right)) + 112px);bottom:calc(max(18px,env(safe-area-inset-bottom)) + 8px);width:80px;height:80px;font-size:13px;
+  /* 外側のリング＝おなら呼吸までのたまり具合。一周したら使える */
+  border:5px solid transparent;
+  background:radial-gradient(circle at 35% 30%,#fff3a8,#ffd83d 60%,#d1a40f) padding-box,
+    conic-gradient(var(--fartair) calc(var(--p,1) * 1turn),rgba(255,255,255,.18) 0) border-box;color:#4a3600;
   box-shadow:0 5px 0 #9c7a07,0 8px 20px rgba(0,0,0,.35)}
+#breathBtn.empty{filter:none;color:rgba(40,36,20,.6);
+  background:radial-gradient(circle at 35% 30%,#dedbc8,#aca78d 60%,#7d785f) padding-box,
+    conic-gradient(var(--fartair) calc(var(--p,1) * 1turn),rgba(255,255,255,.18) 0) border-box}
+#breathBtn.ready{animation:ready 1.2s ease-in-out infinite}
+@keyframes ready{50%{filter:brightness(1.15)}}
 #breathBtn.press{transform:translateY(4px);box-shadow:0 1px 0 #9c7a07,0 4px 12px rgba(0,0,0,.35)}
 
 #stick{position:fixed;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;
@@ -71,7 +83,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .card .go:active{transform:translateY(3px);box-shadow:0 1px 0 #b88a14}
 .y{color:var(--fartair)}
 @media(max-width:600px){.row{font-size:12px}#goal{font-size:12px}#goal .t{font-size:15px}}
-@media(prefers-reduced-motion:reduce){.low{animation:none}}
+@media(prefers-reduced-motion:reduce){.low,#breathBtn.ready{animation:none}}
 </style>
 </head>
 <body>
@@ -81,7 +93,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
   <div class="gauges">
     <div class="row"><span id="o2Label">酸素</span><div class="bar"><i id="o2"></i></div></div>
     <div class="row"><span>HP</span><div class="bar"><i id="hp"></i></div></div>
-    <div class="row"><span>おなら</span><div class="bar"><i id="gas"></i></div></div>
+    <div class="row"><span>おなら</span><div class="gaswrap"><div class="bar"><i id="gas"></i></div><b id="gasMark" title="ここを超えるとおなら呼吸できる"></b></div></div>
   </div>
   <div id="goal"></div>
   <button id="helpBtn" aria-label="一時停止と操作方法">?</button>
@@ -95,6 +107,71 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 
 <script>
 {
+// ============================================================
+// 0. 素材（自作の画像・効果音への差し替え）
+//    assets/ フォルダにファイルを置き、src にパスを書くだけで差し替わります。
+//    例: player: {src: 'assets/player.png', w: 40, h: 28, frames: 4, fps: 10},
+//    src が空、または読み込みに失敗したときは、今のコード描画・合成音がそのまま使われます。
+//    ・画像は透明PNG、すべて「右向き」で描く。w/h はゲーム内の表示サイズ（px）。
+//      2倍の解像度で描いておくとスマホでもくっきり見えます。
+//    ・frames が2以上なら、コマを横一列に並べたスプライトシートとしてアニメーションします。
+//    ・音は mp3 か m4a（iPhoneでも確実に鳴る形式）。jet は長押し中ループするので、
+//      つなぎ目なくループできる音にしてください。
+// ============================================================
+const ASSETS = {
+  images: {
+    player:   {src: '', w: 44, h: 30, frames: 1, fps: 10},  // 緑のスライム（泳ぐ速さに合わせてコマ送り）
+    fish:     {src: '', w: 36, h: 30, frames: 1, fps: 8},   // トゲトゲ魚（近づくとふくらんで拡大）
+    jelly:    {src: '', w: 32, h: 44, frames: 1, fps: 6},   // クラゲ
+    treasure: {src: '', w: 28, h: 26},                      // 宝箱
+    bean:     {src: '', w: 24, h: 18},                      // 豆
+    rock:     {src: '', w: 32, h: 32},                      // 岩1マス（上に砂と海藻が重なります）
+    boat:     {src: '', w: 110, h: 90},                     // スタートの船（下端が水面）
+  },
+  sounds: {
+    jet:        {src: '', volume: 0.6},  // おなら噴射（長押し中ループ）
+    breathe:    {src: '', volume: 0.8},  // おなら呼吸
+    hit:        {src: '', volume: 0.8},  // 敵に当たった
+    treasure:   {src: '', volume: 0.8},  // 宝物を拾った
+    bean:       {src: '', volume: 0.8},  // 豆を食べた
+    clear:      {src: '', volume: 0.8},  // 帰還成功
+    alarm:      {src: '', volume: 0.6},  // 酸素残りわずか（くり返し鳴る）
+    alarmEmpty: {src: '', volume: 0.7},  // 酸素ゼロ（速くくり返し鳴る）
+  },
+};
+
+const Assets = {
+  img: {}, buf: {}, el: {}, decoding: false,
+  load() {
+    for (const [k, a] of Object.entries(ASSETS.images)) {
+      if (!a.src) continue;
+      const im = new Image(); im.onload = () => { this.img[k] = im; }; im.src = a.src;
+    }
+    for (const [k, a] of Object.entries(ASSETS.sounds)) {
+      if (!a.src) continue;
+      const au = new Audio(); au.preload = 'auto'; au.src = a.src; this.el[k] = au;
+    }
+  },
+  // Web Audio で鳴らせるよう読み込む（ローカルファイルで失敗しても <audio> で鳴らす）
+  decode(c) {
+    if (this.decoding || !c) return; this.decoding = true;
+    for (const [k, a] of Object.entries(ASSETS.sounds)) {
+      if (!a.src) continue;
+      fetch(a.src).then(r => r.ok ? r.arrayBuffer() : Promise.reject())
+        .then(b => c.decodeAudioData(b)).then(d => { this.buf[k] = d; }).catch(() => {});
+    }
+  },
+  // 画像があれば (x, y) を中心に描いて true を返す。なければ false（コード描画を使う）
+  draw(k, x, y, t = 0, scale = 1) {
+    const im = this.img[k]; if (!im) return false;
+    const a = ASSETS.images[k], n = a.frames || 1, fw = im.width / n;
+    const f = Math.floor(t * (a.fps || 8)) % n, w = a.w * scale, h = a.h * scale;
+    ctx.drawImage(im, f * fw, 0, fw, im.height, x - w / 2, y - h / 2, w, h);
+    return true;
+  },
+};
+Assets.load();
+
 // ============================================================
 // 1. 設定値（ゲームバランスはここを調整）
 // ============================================================
@@ -112,11 +189,13 @@ const CONFIG = {
   JET_RATE: 30,            // 噴射中に1秒あたり消費するおなら
   JET_ACCEL: 1050,         // 噴射の加速度
   JET_MAX: 310,            // 噴射中の最高速度
-  BREATH_GAS: 30,          // おなら呼吸1回で消費するおなら
-  BREATH_O2: 45,           // おなら呼吸1回で回復する酸素
+  GAS_REGEN: 0.8,          // 噴射していないとき1秒あたり自然回復するおなら
+  BREATH_GAS: 50,          // おなら呼吸1回で消費するおなら（最終手段）
+  BREATH_O2: 80,           // おなら呼吸1回で回復する酸素
   FART_AIR_O2_MULT: 2.3,   // おなら呼吸中の酸素の減りの倍率
   FART_AIR_HP_DRAIN: 2.5,  // おなら呼吸中に1秒あたり減るHP（酸素ゼロより遅い）
   BEAN_GAS: 35,            // 豆を拾ったときのおなら回復量
+  O2_LOW: 25,              // これ以下で警告音（ゼロになると速い警告音）
 
   SWIM_ACCEL: 650,
   SWIM_MAX: 165,
@@ -276,6 +355,7 @@ const Player = {
       }
     }
     if (!this.jetting && wasJetting) Sound.jetStop();
+    if (!this.jetting) this.gas = Math.min(C.GAS_MAX, this.gas + C.GAS_REGEN * dt); // 時間でわずかに回復
 
     if (water) {
       const drag = Math.exp(-C.WATER_DRAG * dt);
@@ -313,7 +393,7 @@ const Player = {
   // おなら呼吸：緊急用。黄色い泡に包まれ、水面に出るまでおならで呼吸する
   breathe() {
     if (!this.underwater()) { if (this.msgCool <= 0) this.say('ここは空気がある！', '#ffffff'); return; }
-    if (this.gas < CONFIG.BREATH_GAS) { if (this.msgCool <= 0) this.say('おならが足りない…', '#cfd8e3'); return; }
+    if (this.gas < CONFIG.BREATH_GAS) { if (this.msgCool <= 0) this.say(`おならが足りない（${CONFIG.BREATH_GAS}%必要）`, '#cfd8e3'); return; }
     this.gas -= CONFIG.BREATH_GAS;
     const before = this.o2;
     this.o2 = Math.min(CONFIG.O2_MAX, this.o2 + CONFIG.BREATH_O2);
@@ -399,10 +479,30 @@ const FX = {
 // ============================================================
 const Sound = {
   ctx: null, jet: null,
-  init() { if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } this.ctx?.resume?.().catch(() => {}); },
+  init() {
+    if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+    this.ctx?.resume?.().catch(() => {});
+    Assets.decode(this.ctx);
+  },
+  // 自作の音声ファイルがあれば鳴らして、止めるためのハンドルを返す。なければ null（合成音を使う）
+  file(k, loop = false) {
+    const a = ASSETS.sounds[k]; if (!a?.src) return null;
+    const c = this.ctx, b = Assets.buf[k], vol = a.volume ?? 1;
+    if (c && b) {
+      const s = c.createBufferSource(), g = c.createGain();
+      s.buffer = b; s.loop = loop; g.gain.value = vol; s.connect(g); g.connect(c.destination); s.start();
+      return {stop: () => { try { s.stop(); } catch (e) {} }};
+    }
+    const el = Assets.el[k]; if (!el || el.error) return null;
+    const e = loop ? el : el.cloneNode();
+    e.loop = loop; e.volume = Math.min(1, vol); e.currentTime = 0; e.play().catch(() => {});
+    return {stop: () => e.pause()};
+  },
   // 噴射中ずっと鳴る「ぶぼぼぼ…」
   jetStart() {
-    const c = this.ctx; if (!c || this.jet) return;
+    if (this.jet) return;
+    const h = this.file('jet', true); if (h) { this.jet = {file: h}; return; }
+    const c = this.ctx; if (!c) return;
     const t = c.currentTime, o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter();
     const lfo = c.createOscillator(), lg = c.createGain();
     o.type = 'sawtooth'; o.frequency.setValueAtTime(115, t); o.frequency.exponentialRampToValueAtTime(70, t + 2.5);
@@ -414,13 +514,16 @@ const Sound = {
     this.jet = {o, lfo, g};
   },
   jetStop() {
-    const c = this.ctx, j = this.jet; if (!c || !j) return;
+    const c = this.ctx, j = this.jet; if (!j) return;
+    if (j.file) { j.file.stop(); this.jet = null; return; }
+    if (!c) return;
     const t = c.currentTime;
     j.g.gain.cancelScheduledValues(t); j.g.gain.setTargetAtTime(0.0001, t, 0.04);
     j.o.stop(t + 0.25); j.lfo.stop(t + 0.25);
     this.jet = null;
   },
   breathe() {
+    if (this.file('breathe')) return;
     const c = this.ctx; if (!c) return;
     const t = c.currentTime, dur = 0.55;
     const o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter();
@@ -430,7 +533,23 @@ const Sound = {
     o.connect(f); f.connect(g); g.connect(c.destination); o.start(t); o.stop(t + dur);
     this.ding(660);
   },
+  // 酸素の警告音（level 1: 残りわずか、2: ゼロ）
+  alarm(level) {
+    if (this.file(level === 2 ? 'alarmEmpty' : 'alarm')) return;
+    const c = this.ctx; if (!c) return;
+    const t = c.currentTime, notes = level === 2 ? [740, 520] : [880];
+    notes.forEach((fq, i) => {
+      const o = c.createOscillator(), g = c.createGain(), s = t + i * 0.13;
+      o.type = 'square'; o.frequency.value = fq;
+      g.gain.setValueAtTime(0.0001, s); g.gain.exponentialRampToValueAtTime(0.09, s + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, s + 0.11);
+      o.connect(g); g.connect(c.destination); o.start(s); o.stop(s + 0.12);
+    });
+  },
+  treasure() { if (!this.file('treasure')) this.ding(880); },
+  bean() { if (!this.file('bean')) this.ding(520); },
+  clear() { if (!this.file('clear')) this.ding(1040); },
   hit() {
+    if (this.file('hit')) return;
     const c = this.ctx; if (!c) return;
     const t = c.currentTime, o = c.createOscillator(), g = c.createGain();
     o.type = 'square'; o.frequency.setValueAtTime(220, t); o.frequency.exponentialRampToValueAtTime(70, t + 0.25);
@@ -451,12 +570,13 @@ const Sound = {
 // ============================================================
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const Game = {
-  state: 'title', time: 0, total: 0, cam: {x: 0, y: 0}, scale: 1, bubbleT: 0, clock: 0, dt: 0, flash: 0,
+  state: 'title', time: 0, total: 0, cam: {x: 0, y: 0}, scale: 1, bubbleT: 0, clock: 0, dt: 0, flash: 0, alarmT: 0,
+  vis: {dark: 0, yellow: 0}, // 視界の悪さ（0〜1）
   reset() {
     World.load(); Player.reset(); Enemies.load();
     FX.parts = []; FX.texts = [];
     this.total = World.items.filter(i => i.type === 'treasure').length;
-    this.time = 0; this.flash = 0;
+    this.time = 0; this.flash = 0; this.alarmT = 0; this.vis = {dark: 0, yellow: 0};
     this.cam.x = Player.cx; this.cam.y = Player.cy;
   },
   start() { Input.clear(); this.reset(); this.state = 'play'; UI.hide(); },
@@ -474,13 +594,13 @@ const Game = {
     for (const it of World.items) {
       if (it.got || Math.hypot(it.x - Player.cx, it.y - Player.cy) > 24) continue;
       if (it.type === 'treasure') {
-        it.got = true; Player.treasure++; Sound.ding(880);
+        it.got = true; Player.treasure++; Sound.treasure();
         FX.text(it.x, it.y - 16, `宝物ゲット！ ${Player.treasure}/${this.total}`, '#ffd25e');
         if (Player.treasure === this.total) FX.text(it.x, it.y + 4, 'スタート地点へ戻ろう！', '#ffffff');
       } else if (it.type === 'bean' && Player.gas < CONFIG.GAS_MAX) { // 満タンのときは豆を残しておく
         it.got = true;
         const add = Math.min(CONFIG.BEAN_GAS, CONFIG.GAS_MAX - Player.gas);
-        Player.gas += add; Sound.ding(520);
+        Player.gas += add; Sound.bean();
         FX.text(it.x, it.y - 16, `豆を食べた！ おなら+${Math.round(add)}`, '#b6f08a');
       }
     }
@@ -493,10 +613,26 @@ const Game = {
     }
     FX.update(dt);
 
+    // 酸素の警告音：残りわずかでゆっくり、ゼロで速くくり返す
+    const P = Player, C = CONFIG;
+    if (P.o2 < C.O2_LOW) {
+      this.alarmT -= dt;
+      if (this.alarmT <= 0) { Sound.alarm(P.o2 <= 0 ? 2 : 1); this.alarmT = P.o2 <= 0 ? 0.45 : 1.1; }
+    } else this.alarmT = 0;
+
+    // 視界の悪さ（ピンチほど外側から狭まる）
+    const lost = 1 - P.hp / C.HP_MAX;
+    const pinch = Math.max(P.o2 < C.O2_LOW ? (1 - P.o2 / C.O2_LOW) * 0.3 : 0, P.hp < 50 ? (1 - P.hp / 50) * 0.4 : 0);
+    const darkTarget = P.o2 <= 0 ? 0.35 + 0.6 * lost : pinch;       // 酸素ゼロ：HPが減るほど黒く
+    const yellowTarget = P.fartAir ? 0.25 + 0.7 * lost : 0;          // おなら呼吸：HPが減るほど黄色く
+    const k = 1 - Math.exp(-2.5 * dt);
+    this.vis.dark += (darkTarget - this.vis.dark) * k;
+    this.vis.yellow += (yellowTarget - this.vis.yellow) * k;
+
     // ゲームオーバー判定を先に、その後クリア判定
     if (Player.hp <= 0) { this.state = 'over'; Sound.jetStop(); UI.show('over'); return; }
     const home = Math.hypot(Player.cx - World.start.x, Player.cy - World.start.y) < 70;
-    if (Player.treasure === this.total && home) { this.state = 'clear'; Sound.jetStop(); Sound.ding(1040); UI.show('clear'); }
+    if (Player.treasure === this.total && home) { this.state = 'clear'; Sound.jetStop(); Sound.clear(); UI.show('clear'); }
   },
 };
 
@@ -547,6 +683,10 @@ const Render = {
     const g = ctx.createRadialGradient(px, py, 60 * s, px, py, 260 * s);
     g.addColorStop(0, 'rgba(2,8,20,0)'); g.addColorStop(1, `rgba(2,8,20,${0.75 * depth})`);
     ctx.fillStyle = g; ctx.fillRect(0, 0, vw, vh);
+    // ピンチの視界：酸素ゼロは黒、おなら呼吸は黄色が外側から迫ってくる
+    const far = Math.max(Math.hypot(px, py), Math.hypot(vw - px, py), Math.hypot(px, vh - py), Math.hypot(vw - px, vh - py));
+    this.vignette(px, py, far, s, Game.vis.yellow, '150,130,10', 0.92);
+    this.vignette(px, py, far, s, Game.vis.dark, '0,0,0', 0.97);
     if (Player.hurt > 0) {
       const a = reduceMotion ? 0.14 : 0.12 + 0.08 * Math.sin(Game.clock * 12);
       ctx.fillStyle = `rgba(255,60,60,${a})`; ctx.fillRect(0, 0, vw, vh);
@@ -556,6 +696,15 @@ const Render = {
       ctx.fillStyle = `rgba(255,228,70,${(reduceMotion ? 0.15 : 0.42) * Game.flash})`; ctx.fillRect(0, 0, vw, vh);
     }
     this.homeArrow(ox, oy, s);
+  },
+  // sev 0 で見えない → 1 でプレイヤーのまわり以外が塗りつぶされる
+  vignette(px, py, far, s, sev, rgb, alpha) {
+    if (sev < 0.01) return;
+    const inner = far + (48 * s - far) * Math.min(1, sev);
+    const outer = inner + (150 - 90 * sev) * s;
+    const g = ctx.createRadialGradient(px, py, inner, px, py, outer);
+    g.addColorStop(0, `rgba(${rgb},0)`); g.addColorStop(1, `rgba(${rgb},${alpha * Math.min(1, sev * 1.6)})`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, vw, vh);
   },
   background(ox, oy, w, h) {
     const wt = World.waterTop;
@@ -576,11 +725,12 @@ const Render = {
   tiles(ox, oy, w, h) {
     const x0 = Math.max(0, Math.floor(ox / T)), x1 = Math.min(World.cols - 1, Math.floor((ox + w) / T));
     const y0 = Math.max(0, Math.floor(oy / T)), y1 = Math.min(World.rows - 1, Math.floor((oy + h) / T));
+    const rockImg = Assets.img.rock;
     for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
       if (!World.solid(tx, ty)) continue;
       const x = tx * T, y = ty * T, v = hash(tx, ty);
-      ctx.fillStyle = v < .5 ? '#3b3a4f' : '#34334a';
-      ctx.fillRect(x, y, T + .5, T + .5);
+      if (rockImg) ctx.drawImage(rockImg, x, y, T + .5, T + .5);
+      else { ctx.fillStyle = v < .5 ? '#3b3a4f' : '#34334a'; ctx.fillRect(x, y, T + .5, T + .5); }
       if (!World.solid(tx, ty - 1)) {
         ctx.fillStyle = '#d8c48f'; ctx.fillRect(x, y, T + .5, 6); // 砂
         if (v > .55) { // 海藻
@@ -589,21 +739,25 @@ const Render = {
           for (let k = 1; k <= 4; k++) ctx.lineTo(x + 10 + v * 10 + Math.sin(Game.clock * 2 + k + tx) * 4, y - k * 7);
           ctx.stroke();
         }
-      } else if (!World.solid(tx - 1, ty) || !World.solid(tx + 1, ty) || !World.solid(tx, ty + 1)) {
+      } else if (!rockImg && (!World.solid(tx - 1, ty) || !World.solid(tx + 1, ty) || !World.solid(tx, ty + 1))) {
         ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.fillRect(x + 4, y + 4, T - 8, T - 8);
       }
     }
   },
   boat() {
-    const {x, y} = World.start, wt = World.waterTop, b = Math.sin(Game.clock * 1.5) * 2;
+    const {x} = World.start, wt = World.waterTop, b = Math.sin(Game.clock * 1.5) * 2;
     ctx.save(); ctx.translate(x, wt + b);
-    ctx.fillStyle = '#f3efe4'; ctx.fillRect(-4, -78, 4, 54);
-    ctx.fillStyle = '#ff7fae'; ctx.beginPath(); ctx.moveTo(0, -76); ctx.lineTo(30, -58); ctx.lineTo(0, -40); ctx.fill();
-    ctx.fillStyle = '#c4533a'; ctx.beginPath(); ctx.moveTo(-50, -24); ctx.lineTo(50, -24); ctx.lineTo(36, 4); ctx.lineTo(-36, 4); ctx.fill();
-    ctx.fillStyle = '#f3efe4'; ctx.fillRect(-46, -24, 92, 5);
+    let top = -88;
+    if (Assets.draw('boat', 0, -ASSETS.images.boat.h / 2 + 4, Game.clock)) top = -ASSETS.images.boat.h - 6;
+    else {
+      ctx.fillStyle = '#f3efe4'; ctx.fillRect(-4, -78, 4, 54);
+      ctx.fillStyle = '#ff7fae'; ctx.beginPath(); ctx.moveTo(0, -76); ctx.lineTo(30, -58); ctx.lineTo(0, -40); ctx.fill();
+      ctx.fillStyle = '#c4533a'; ctx.beginPath(); ctx.moveTo(-50, -24); ctx.lineTo(50, -24); ctx.lineTo(36, 4); ctx.lineTo(-36, 4); ctx.fill();
+      ctx.fillStyle = '#f3efe4'; ctx.fillRect(-46, -24, 92, 5);
+    }
     ctx.font = '800 13px "M PLUS Rounded 1c",sans-serif'; ctx.textAlign = 'center';
-    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,40,70,.6)'; ctx.strokeText('スタート', 0, -88);
-    ctx.fillStyle = '#ffffff'; ctx.fillText('スタート', 0, -88);
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,40,70,.6)'; ctx.strokeText('スタート', 0, top);
+    ctx.fillStyle = '#ffffff'; ctx.fillText('スタート', 0, top);
     ctx.restore();
   },
   items() {
@@ -613,10 +767,12 @@ const Render = {
       ctx.save(); ctx.translate(it.x, it.y + bob);
       if (it.type === 'treasure') {
         ctx.fillStyle = 'rgba(255,210,94,.25)'; ctx.beginPath(); ctx.arc(0, 0, 20 + Math.sin(Game.clock * 4) * 3, 0, 7); ctx.fill();
-        ctx.fillStyle = '#8a4b1f'; ctx.fillRect(-12, -6, 24, 16);
-        ctx.fillStyle = '#b5652a'; ctx.fillRect(-12, -12, 24, 8);
-        ctx.fillStyle = '#ffd25e'; ctx.fillRect(-12, -6, 24, 3); ctx.fillRect(-3, -6, 6, 8);
-      } else {
+        if (!Assets.draw('treasure', 0, 0, Game.clock)) {
+          ctx.fillStyle = '#8a4b1f'; ctx.fillRect(-12, -6, 24, 16);
+          ctx.fillStyle = '#b5652a'; ctx.fillRect(-12, -12, 24, 8);
+          ctx.fillStyle = '#ffd25e'; ctx.fillRect(-12, -6, 24, 3); ctx.fillRect(-3, -6, 6, 8);
+        }
+      } else if (!Assets.draw('bean', 0, 0, Game.clock)) {
         ctx.fillStyle = '#7fcf4f'; ctx.beginPath(); ctx.ellipse(0, 0, 11, 7, -0.4, 0, 7); ctx.fill();
         ctx.fillStyle = '#b6f08a'; ctx.beginPath(); ctx.ellipse(-3, -2, 4, 2, -0.4, 0, 7); ctx.fill();
       }
@@ -628,48 +784,45 @@ const Render = {
       ctx.save(); ctx.translate(e.x, e.y);
       if (e.type === 'fish') {
         ctx.scale(e.vx < 0 ? -1 : 1, 1);
-        const r = e.r;
-        // トゲ（近づくとふくらんで伸びる）
-        ctx.strokeStyle = '#a8461f'; ctx.lineWidth = 2; ctx.lineCap = 'round';
-        const sl = 3 + e.puff * 5;
-        for (let i = 0; i < 12; i++) {
-          const a = i / 12 * Math.PI * 2;
-          ctx.beginPath(); ctx.moveTo(Math.cos(a) * r * .9, Math.sin(a) * r * .9); ctx.lineTo(Math.cos(a) * (r + sl), Math.sin(a) * (r + sl)); ctx.stroke();
-        }
-        // 尾びれ
-        const tw = Math.sin(Game.clock * 10 + e.ph) * 3;
-        ctx.fillStyle = '#e0762f'; ctx.beginPath(); ctx.moveTo(-r + 2, 0); ctx.lineTo(-r - 10, -7 + tw); ctx.lineTo(-r - 10, 7 + tw); ctx.fill();
-        // 体
-        ctx.fillStyle = '#ff9f43'; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill();
-        ctx.fillStyle = '#ffd9a0'; ctx.beginPath(); ctx.ellipse(1, r * .35, r * .7, r * .45, 0, 0, 7); ctx.fill();
-        // 目（怒り眉）
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(r * .45, -r * .25, 3.6, 0, 7); ctx.fill();
-        ctx.fillStyle = '#1b1b2e'; ctx.beginPath(); ctx.arc(r * .55, -r * .22, 1.8, 0, 7); ctx.fill();
-        ctx.strokeStyle = '#5a2210'; ctx.lineWidth = 1.6;
-        ctx.beginPath(); ctx.moveTo(r * .2, -r * .55); ctx.lineTo(r * .75, -r * .4); ctx.stroke();
-      } else {
-        const pulse = 1 + Math.sin(Game.clock * 3 + e.ph) * 0.08, r = e.r;
-        // 触手
-        ctx.strokeStyle = 'rgba(230,170,255,.7)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
-        for (let i = 0; i < 5; i++) {
-          const bx = -r * .7 + i * r * .35;
-          ctx.beginPath(); ctx.moveTo(bx, 2);
-          for (let k = 1; k <= 4; k++) ctx.lineTo(bx + Math.sin(Game.clock * 3 + i + k) * 3, 2 + k * 5);
-          ctx.stroke();
-        }
-        // かさ
-        ctx.fillStyle = 'rgba(200,140,255,.25)'; ctx.beginPath(); ctx.arc(0, -2, r * 1.5, 0, 7); ctx.fill();
-        ctx.fillStyle = 'rgba(205,150,255,.85)';
-        ctx.beginPath(); ctx.ellipse(0, 0, r * pulse, r * .9 / pulse, 0, Math.PI, 0); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.beginPath(); ctx.ellipse(-r * .35, -r * .5, 3.5, 2, -0.5, 0, 7); ctx.fill();
-        ctx.fillStyle = '#3a1550';
-        ctx.beginPath(); ctx.arc(-4, -3, 1.6, 0, 7); ctx.arc(4, -3, 1.6, 0, 7); ctx.fill();
-      }
+        if (!Assets.draw('fish', 0, 0, Game.clock + e.ph, 1 + e.puff * 0.5)) this.fish(e);
+      } else if (!Assets.draw('jelly', 0, 0, Game.clock + e.ph)) this.jelly(e);
       ctx.restore();
     }
   },
+  fish(e) {
+    const r = e.r;
+    // トゲ（近づくとふくらんで伸びる）
+    ctx.strokeStyle = '#a8461f'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    const sl = 3 + e.puff * 5;
+    for (let i = 0; i < 12; i++) {
+      const a = i / 12 * Math.PI * 2;
+      ctx.beginPath(); ctx.moveTo(Math.cos(a) * r * .9, Math.sin(a) * r * .9); ctx.lineTo(Math.cos(a) * (r + sl), Math.sin(a) * (r + sl)); ctx.stroke();
+    }
+    // 尾びれ
+    const tw = Math.sin(Game.clock * 10 + e.ph) * 3;
+    ctx.fillStyle = '#e0762f'; ctx.beginPath(); ctx.moveTo(-r + 2, 0); ctx.lineTo(-r - 10, -7 + tw); ctx.lineTo(-r - 10, 7 + tw); ctx.fill();
+    // 体
+    ctx.fillStyle = '#ff9f43'; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffd9a0'; ctx.beginPath(); ctx.ellipse(1, r * .35, r * .7, r * .45, 0, 0, 7); ctx.fill();
+  },
+  jelly(e) {
+    const pulse = 1 + Math.sin(Game.clock * 3 + e.ph) * 0.08, r = e.r;
+    // 触手
+    ctx.strokeStyle = 'rgba(230,170,255,.7)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    for (let i = 0; i < 5; i++) {
+      const bx = -r * .7 + i * r * .35;
+      ctx.beginPath(); ctx.moveTo(bx, 2);
+      for (let k = 1; k <= 4; k++) ctx.lineTo(bx + Math.sin(Game.clock * 3 + i + k) * 3, 2 + k * 5);
+      ctx.stroke();
+    }
+    // かさ
+    ctx.fillStyle = 'rgba(200,140,255,.25)'; ctx.beginPath(); ctx.arc(0, -2, r * 1.5, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(205,150,255,.85)';
+    ctx.beginPath(); ctx.ellipse(0, 0, r * pulse, r * .9 / pulse, 0, Math.PI, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.beginPath(); ctx.ellipse(-r * .35, -r * .5, 3.5, 2, -0.5, 0, 7); ctx.fill();
+  },
   player() {
-    const p = Player, k = Math.sin(p.kick) * 4, arm = Math.sin(p.kick + 1.4) * 4;
+    const p = Player;
     ctx.save(); ctx.translate(p.cx, p.cy);
 
     // おなら呼吸中の黄色い泡
@@ -685,6 +838,12 @@ const Render = {
     if (p.inv > 0 && Math.sin(Game.clock * 30) > 0) ctx.globalAlpha = 0.45;
     else if (p.hurt > 0 && Math.sin(Game.clock * 30) > 0) ctx.globalAlpha = 0.6;
 
+    // 泳いでいるほど速くコマ送り（kick は泳ぐと1秒に12、止まると3進む）
+    if (!Assets.draw('player', 0, 0, p.kick / 12)) this.slime(p);
+    ctx.restore();
+  },
+  slime(p) {
+    const k = Math.sin(p.kick) * 4, arm = Math.sin(p.kick + 1.4) * 4;
     const G = '#5fd35a', D = '#2a7d34';
     // 手足（縁取り→本体の順）
     const limbs = [
@@ -713,17 +872,6 @@ const Render = {
     ctx.fillStyle = 'rgba(230,255,215,.8)';
     ctx.beginPath(); ctx.ellipse(8, -8, 3.2, 1.8, -0.4, 0, 7); ctx.fill();
     ctx.beginPath(); ctx.ellipse(-5, -2, 4, 1.4, 0, 0, 7); ctx.fill();
-    // 目と口
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath(); ctx.ellipse(12, -4, 2.4, 3, 0, 0, 7); ctx.ellipse(16.8, -4.3, 2.1, 2.7, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = '#16301a';
-    ctx.beginPath(); ctx.arc(12.8, -3.8, 1.3, 0, 7); ctx.arc(17.4, -4, 1.2, 0, 7); ctx.fill();
-    ctx.strokeStyle = '#16301a'; ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    if (p.fartAir || p.o2 < 20) ctx.arc(15, 1.5, 1.6, 0, 7); // 苦しい「むぐ」口
-    else ctx.arc(14.5, 0, 2.2, 0.3, Math.PI - 0.3);
-    ctx.stroke();
-    ctx.restore();
   },
   particles() {
     for (const p of FX.parts) {
@@ -772,8 +920,8 @@ const HELP = `<dl>
   <dt>一時停止</dt><dd>Esc / H キー、または右上の「?」</dd>
 </dl>
 <p>スライムの体は重くて<b>沈みやすく、上に泳ぐのは苦手</b>。押している間だけおならゲージを使って<b>噴射</b>し、すいすい進もう。</p>
-<p>酸素が尽きそうなら<b class="y">おなら呼吸</b>で緊急回復。ただし黄色い泡に包まれておならで息をすることになり、水面に出るまで<b>酸素の減りが速く、HPも少しずつ減ります</b>。</p>
-<p>クラゲやトゲトゲ魚に当たるとダメージ。おならは海底の<b>豆</b>で補給できます。</p>`;
+<p>酸素が尽きそうなら最終手段の<b class="y">おなら呼吸</b>。おならゲージを半分使って酸素を大きく回復します。ゲージが<b class="y">黄色い線</b>を超えていれば使えます（黄色いボタンのリングが一周した状態）。ただし黄色い泡に包まれておならで息をすることになり、水面に出るまで<b>酸素の減りが速く、HPも少しずつ減ります</b>。</p>
+<p>クラゲやトゲトゲ魚に当たるとダメージ。おならは時間でわずかにたまり、海底の<b>豆</b>でも補給できます。ピンチになるほど視界が狭まっていくので注意。</p>`;
 
 const UI = {
   show(kind) {
@@ -803,9 +951,13 @@ const UI = {
     $('o2Label').classList.toggle('fart', p.fartAir);
     $('o2').parentElement.classList.toggle('low', p.o2 < 25);
     $('hp').parentElement.classList.toggle('low', p.o2 <= 0 || p.fartAir || p.hp < 25);
-    $('gas').parentElement.classList.toggle('low', p.gas > 0 && p.gas < CONFIG.BREATH_GAS);
+    const canBreathe = p.gas >= CONFIG.BREATH_GAS;
+    $('gasMark').style.left = (CONFIG.BREATH_GAS / CONFIG.GAS_MAX * 100) + '%';
+    $('gasMark').classList.toggle('ready', canBreathe);
     $('jetBtn').classList.toggle('empty', p.gas <= 0);
-    $('breathBtn').classList.toggle('empty', p.gas < CONFIG.BREATH_GAS);
+    $('breathBtn').classList.toggle('empty', !canBreathe);
+    $('breathBtn').classList.toggle('ready', canBreathe && p.o2 < CONFIG.O2_LOW && p.underwater());
+    $('breathBtn').style.setProperty('--p', Math.min(1, p.gas / CONFIG.BREATH_GAS).toFixed(3));
     const done = p.treasure >= Game.total;
     const goal = done ? `<span class="t">船へ帰還せよ！</span><br>黄色の矢印の方向へ`
                       : `<span class="t">宝物 ${p.treasure} / ${Game.total}</span><br>海底や洞窟を探そう`;
