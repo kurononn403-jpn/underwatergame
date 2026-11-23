@@ -11,10 +11,10 @@
 VOICE: 明るくとぼけた海のアドベンチャー
 IDEA: 潜水士の手首計器と海中の世界
 PICTURE: ゲーム画面そのもの（全画面キャンバス）
-COLOUR and TYPE: 深い青緑の海、珊瑚ピンクのおなら、金の宝物／M PLUS Rounded 1c
-LAYOUT: 全画面ゲーム、左上に計器、右下におならボタン
+COLOUR and TYPE: 深い青緑の海、緑のスライム、珊瑚ピンクのおなら、黄色いおなら呼吸、金の宝物／M PLUS Rounded 1c
+LAYOUT: 全画面ゲーム、左上に計器、右下におならボタン2つ
 */
-:root{color-scheme:dark;--ink:#eaf8ff;--panel:rgba(4,24,44,.72);--o2:#4fd6f0;--hp:#ff6b6b;--gas:#ff9ec4;--gold:#ffd25e}
+:root{color-scheme:dark;--ink:#eaf8ff;--panel:rgba(4,24,44,.72);--o2:#4fd6f0;--hp:#ff6b6b;--gas:#ff9ec4;--gold:#ffd25e;--fartair:#ffe14d}
 *{box-sizing:border-box;min-width:0}
 html,body{margin:0;height:100%;overflow:hidden;background:#061a33;color:var(--ink);
   font:16px/1.5 "M PLUS Rounded 1c","Hiragino Maru Gothic ProN",system-ui,sans-serif;
@@ -30,23 +30,27 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .bar{height:11px;border-radius:6px;background:rgba(255,255,255,.14);overflow:hidden}
 .bar i{display:block;height:100%;width:100%;border-radius:6px;transition:width .1s linear}
 #o2{background:linear-gradient(90deg,#2aa8d8,var(--o2))}
+#o2.fart{background:linear-gradient(90deg,#c9a400,var(--fartair))}
+#o2Label.fart{color:var(--fartair)}
 #hp{background:linear-gradient(90deg,#e04848,var(--hp))}
+#gas{background:linear-gradient(90deg,#d9578a,var(--gas))}
 .low{animation:blink .5s steps(2) infinite}
 @keyframes blink{50%{opacity:.35}}
-#gas{display:flex;gap:4px}
-#gas b{width:15px;height:15px;border-radius:50%;background:var(--gas);box-shadow:inset -3px -3px 0 rgba(0,0,0,.18)}
-#gas b.off{background:rgba(255,255,255,.14);box-shadow:none}
 #goal{background:var(--panel);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:8px 12px;font-size:13px;font-weight:800;line-height:1.35}
 #goal .t{color:var(--gold);font-size:17px}
 #helpBtn{pointer-events:auto;margin-left:auto;width:44px;height:44px;border-radius:50%;background:var(--panel);border:1px solid rgba(255,255,255,.25);font-size:20px;font-weight:800;flex:none}
 
-#fartBtn{position:fixed;right:max(18px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));
-  width:96px;height:96px;border-radius:50%;font-weight:800;font-size:17px;line-height:1.1;
+.fbtn{position:fixed;border-radius:50%;font-weight:800;line-height:1.1;touch-action:none}
+.fbtn small{display:block;font-size:11px;opacity:.8}
+.fbtn.empty{filter:grayscale(1) brightness(.7)}
+#jetBtn{right:max(18px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));width:100px;height:100px;font-size:16px;
   background:radial-gradient(circle at 35% 30%,#ffc6dc,#ff7fae 60%,#d9578a);color:#4a1028;
   box-shadow:0 6px 0 #a33a66,0 10px 24px rgba(0,0,0,.35)}
-#fartBtn small{display:block;font-size:11px;opacity:.8}
-#fartBtn:active,#fartBtn.press{transform:translateY(4px);box-shadow:0 2px 0 #a33a66,0 4px 12px rgba(0,0,0,.35)}
-#fartBtn.empty{filter:grayscale(1) brightness(.7)}
+#jetBtn.press{transform:translateY(4px);box-shadow:0 2px 0 #a33a66,0 4px 12px rgba(0,0,0,.35)}
+#breathBtn{right:calc(max(18px,env(safe-area-inset-right)) + 112px);bottom:calc(max(18px,env(safe-area-inset-bottom)) + 8px);width:76px;height:76px;font-size:13px;
+  background:radial-gradient(circle at 35% 30%,#fff3a8,#ffd83d 60%,#d1a40f);color:#4a3600;
+  box-shadow:0 5px 0 #9c7a07,0 8px 20px rgba(0,0,0,.35)}
+#breathBtn.press{transform:translateY(4px);box-shadow:0 1px 0 #9c7a07,0 4px 12px rgba(0,0,0,.35)}
 
 #stick{position:fixed;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;
   border:2px solid rgba(255,255,255,.35);background:rgba(255,255,255,.08);display:none;pointer-events:none}
@@ -54,7 +58,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 
 #overlay{position:fixed;inset:0;display:grid;place-items:center;padding:16px;background:rgba(3,14,30,.62);backdrop-filter:blur(3px)}
 #overlay[hidden]{display:none}
-.card{width:min(460px,100%);max-height:100%;overflow:auto;background:linear-gradient(180deg,#0d3b5e,#082640);border:1px solid rgba(255,255,255,.18);
+.card{width:min(480px,100%);max-height:100%;overflow:auto;background:linear-gradient(180deg,#0d3b5e,#082640);border:1px solid rgba(255,255,255,.18);
   border-radius:22px;padding:22px 22px 20px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 .card h1{font-size:clamp(28px,7vw,40px);line-height:1.05;margin:0 0 6px;font-weight:800;text-wrap:balance}
 .card h1 span{color:var(--gas)}
@@ -65,7 +69,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .card .big{font-size:22px;font-weight:800;color:var(--gold);margin-bottom:8px}
 .card .go{width:100%;min-height:52px;border-radius:14px;background:var(--gold);color:#3a2600;font-weight:800;font-size:18px;box-shadow:0 4px 0 #b88a14}
 .card .go:active{transform:translateY(3px);box-shadow:0 1px 0 #b88a14}
-.card .note{font-size:12px;opacity:.65;margin-top:10px}
+.y{color:var(--fartair)}
 @media(max-width:600px){.row{font-size:12px}#goal{font-size:12px}#goal .t{font-size:15px}}
 @media(prefers-reduced-motion:reduce){.low{animation:none}}
 </style>
@@ -75,18 +79,19 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 
 <div id="hud">
   <div class="gauges">
-    <div class="row"><span>酸素</span><div class="bar"><i id="o2"></i></div></div>
+    <div class="row"><span id="o2Label">酸素</span><div class="bar"><i id="o2"></i></div></div>
     <div class="row"><span>HP</span><div class="bar"><i id="hp"></i></div></div>
-    <div class="row"><span>おなら</span><div id="gas"></div></div>
+    <div class="row"><span>おなら</span><div class="bar"><i id="gas"></i></div></div>
   </div>
   <div id="goal"></div>
-  <button id="helpBtn" aria-label="操作方法">?</button>
+  <button id="helpBtn" aria-label="一時停止と操作方法">?</button>
 </div>
 
-<button id="fartBtn">おなら<small>Space</small></button>
+<button id="breathBtn" class="fbtn" tabindex="-1" aria-label="おなら呼吸">おなら<br>呼吸<small>K</small></button>
+<button id="jetBtn" class="fbtn" tabindex="-1" aria-label="おなら噴射（長押し）">おなら<br>噴射<small>Space</small></button>
 <div id="stick"><div id="knob"></div></div>
 
-<div id="overlay"><div class="card" id="card"></div></div>
+<div id="overlay" role="dialog" aria-modal="true"><div class="card" id="card"></div></div>
 
 <script>
 {
@@ -95,27 +100,40 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 // ============================================================
 const CONFIG = {
   TILE: 32,
-  VIEW: 420,             // 画面の短い辺に映る範囲（ワールド座標px）
+  VIEW: 420,               // 画面の短い辺に映る範囲（ワールド座標px）
   O2_MAX: 100,
-  O2_DRAIN: 2.4,         // 水中で1秒あたりに減る酸素
-  O2_SURFACE: 45,        // 水面で1秒あたりに回復する酸素
+  O2_DRAIN: 2.6,           // 水中で1秒あたりに減る酸素
+  O2_SURFACE: 45,          // 水面で1秒あたりに回復する酸素
   HP_MAX: 100,
-  HP_DRAIN: 9,           // 酸素ゼロのとき1秒あたりに減るHP
-  GAS_MAX: 5,            // おならの最大残量
-  GAS_START: 5,
-  FART_O2: 35,           // おなら1回で回復する酸素
-  FART_PUSH: 430,        // おならの推進力
-  FART_COOLDOWN: 0.35,
-  BEAN_GAS: 2,           // 豆を拾ったときのおなら回復量
+  HP_DRAIN: 9,             // 酸素ゼロのとき1秒あたりに減るHP
+
+  GAS_MAX: 100,            // おならゲージの最大値
+  GAS_START: 100,
+  JET_RATE: 30,            // 噴射中に1秒あたり消費するおなら
+  JET_ACCEL: 1050,         // 噴射の加速度
+  JET_MAX: 310,            // 噴射中の最高速度
+  BREATH_GAS: 30,          // おなら呼吸1回で消費するおなら
+  BREATH_O2: 45,           // おなら呼吸1回で回復する酸素
+  FART_AIR_O2_MULT: 2.3,   // おなら呼吸中の酸素の減りの倍率
+  FART_AIR_HP_DRAIN: 2.5,  // おなら呼吸中に1秒あたり減るHP（酸素ゼロより遅い）
+  BEAN_GAS: 35,            // 豆を拾ったときのおなら回復量
+
   SWIM_ACCEL: 650,
   SWIM_MAX: 165,
+  UP_FACTOR: 0.55,         // 上向きに泳ぐ力の倍率（小さいほど浮きにくい）
+  SINK: 170,               // 水中で沈む力
   WATER_DRAG: 2.0,
-  GRAVITY: 900,          // 水面より上での重力
+  GRAVITY: 900,            // 水面より上での重力
+
+  ENEMY_DAMAGE: 15,
+  INVULN: 1.2,             // 被弾後の無敵時間
+  KNOCKBACK: 260,
 };
 
 // ============================================================
 // 2. マップ（1文字=1マス）
 //    ' ' 空  '.' 水  '#' 岩  'S' スタート  'T' 宝物  'B' 豆（おなら補給）
+//    'F' トゲトゲ魚（左右に泳ぐ）  'J' クラゲ（上下に漂う）
 // ============================================================
 const MAP = [
   "                                                            ",
@@ -124,33 +142,33 @@ const MAP = [
   "...S........................................................",
   "............................................................",
   "............................................................",
-  "............................................................",
+  "..........................F.................................",
   "##..........................................................",
   "###.......................................####..............",
   "####....B...............................######..............",
-  "#####.................................#########.............",
+  "#####................J................#########.............",
   "#######..............................##########.............",
   "#########...........................####....###.....T.......",
-  "##########.........................####......###............",
+  "##########.........................####......###.....F......",
   "###########......................#####...B..................",
   "############....................######...####..##...........",
   "#############.................#######..######..###..........",
-  "##############...............#######..##...##...###.........",
+  "##############...............#######..##...##...###......J..",
   "###############............#########..#..T..#...####........",
-  "################..........##########..#.....#...#####.......",
+  "################.....J....##########..#.....#...#####.......",
   "#################.........##########..###.###...######......",
   "##################........##########..........#########.....",
   "###################.......#####################.#######.....",
   "####################.......####################..######.....",
   "#####################.......###################...#####.....",
   "######################........#########.......B...####......",
-  "#######################................................#....",
+  "#######################.................F..............#....",
   "########################.............................###....",
   "#########################.....######################.####...",
-  "##########################...##################.....###.....",
+  "##########################...##################.....###...J.",
   "###########################..#########.....T........##......",
   "###########################......##........#####.........T..",
-  "#############################..........###########..........",
+  "#############################....F.....###########..........",
   "##############################......###############.........",
   "############################################################",
   "############################################################",
@@ -162,17 +180,19 @@ const MAP = [
 const T = CONFIG.TILE;
 const World = {
   cols: MAP[0].length, rows: MAP.length,
-  grid: [], items: [], start: {x: 0, y: 0}, waterTop: 0,
+  grid: [], items: [], spawns: [], start: {x: 0, y: 0}, waterTop: 0,
   load() {
     this.grid = MAP.map(r => r.split(''));
-    this.items = [];
+    this.items = []; this.spawns = [];
     this.waterTop = MAP.findIndex(r => r.includes('.')) * T;
     this.grid.forEach((row, ty) => row.forEach((c, tx) => {
       const cx = tx * T + T / 2, cy = ty * T + T / 2;
       if (c === 'S') this.start = {x: cx, y: cy};
       if (c === 'T') this.items.push({type: 'treasure', x: cx, y: cy, got: false});
       if (c === 'B') this.items.push({type: 'bean', x: cx, y: cy, got: false});
-      if ('STB'.includes(c)) row[tx] = ty * T >= this.waterTop ? '.' : ' ';
+      if (c === 'F') this.spawns.push({type: 'fish', x: cx, y: cy});
+      if (c === 'J') this.spawns.push({type: 'jelly', x: cx, y: cy});
+      if ('STBFJ'.includes(c)) row[tx] = ty * T >= this.waterTop ? '.' : ' ';
     }));
   },
   get w() { return this.cols * T; },
@@ -182,6 +202,7 @@ const World = {
     if (ty < 0) return false;
     return this.grid[ty][tx] === '#';
   },
+  solidAt(x, y) { return this.solid(Math.floor(x / T), Math.floor(y / T)); },
   hits(b) {
     const x0 = Math.floor(b.x / T), x1 = Math.floor((b.x + b.w - 0.01) / T);
     const y0 = Math.floor(b.y / T), y1 = Math.floor((b.y + b.h - 0.01) / T);
@@ -194,7 +215,7 @@ const World = {
 // 4. 入力（キーボード＋タッチ）
 // ============================================================
 const Input = {
-  keys: new Set(), stick: {x: 0, y: 0, id: null, ox: 0, oy: 0}, fartQueued: false,
+  keys: new Set(), stick: {x: 0, y: 0, id: null, ox: 0, oy: 0}, jetTouch: null, breathQueued: false,
   axis() {
     const k = this.keys;
     let x = (k.has('ArrowRight') || k.has('KeyD') ? 1 : 0) - (k.has('ArrowLeft') || k.has('KeyA') ? 1 : 0);
@@ -203,47 +224,81 @@ const Input = {
     const len = Math.hypot(x, y);
     return len > 1 ? {x: x / len, y: y / len} : {x, y};
   },
+  jet() { return this.keys.has('Space') || this.keys.has('KeyJ') || this.jetTouch !== null; },
+  clear() { this.keys.clear(); this.jetTouch = null; this.breathQueued = false; },
 };
 
 // ============================================================
-// 5. プレイヤー
+// 5. プレイヤー（緑の人型スライム）
 // ============================================================
 const Player = {
   reset() {
     Object.assign(this, {
       w: 26, h: 16, x: World.start.x - 13, y: World.start.y - 8, vx: 0, vy: 0, face: 1,
       o2: CONFIG.O2_MAX, hp: CONFIG.HP_MAX, gas: CONFIG.GAS_START,
-      cool: 0, treasure: 0, kick: 0, boost: 0, hurt: 0,
+      treasure: 0, kick: 0, hurt: 0, inv: 0, msgCool: 0,
+      jetting: false, jetDir: {x: 1, y: 0}, fartAir: false,
     });
   },
   get cx() { return this.x + this.w / 2; },
   get cy() { return this.y + this.h / 2; },
   inWater() { return this.cy > World.waterTop; },
+  underwater() { return this.y > World.waterTop - 4; },
   update(dt) {
-    const a = Input.axis(), C = CONFIG;
+    const a = Input.axis(), C = CONFIG, water = this.inWater();
     if (a.x) this.face = Math.sign(a.x);
-    if (this.inWater()) {
+
+    // 泳ぎ：上向きは弱く、何もしないとゆっくり沈む
+    if (water) {
       this.vx += a.x * C.SWIM_ACCEL * dt;
-      this.vy += a.y * C.SWIM_ACCEL * dt;
-      const drag = Math.exp(-C.WATER_DRAG * dt);
-      this.vx *= drag; this.vy *= drag;
-      const sp = Math.hypot(this.vx, this.vy);
-      if (sp > C.SWIM_MAX) { const k = Math.exp(-4 * dt); this.vx *= k; this.vy *= k; }
+      this.vy += (a.y * C.SWIM_ACCEL * (a.y < 0 ? C.UP_FACTOR : 1) + C.SINK) * dt;
     } else {
       this.vy += C.GRAVITY * dt;
       this.vx += a.x * C.SWIM_ACCEL * 0.3 * dt;
     }
-    this.kick += dt * (Math.hypot(a.x, a.y) > 0.1 ? 12 : 3);
-    this.boost = Math.max(0, this.boost - dt);
-    this.cool = Math.max(0, this.cool - dt);
+
+    // おなら噴射：押している間だけゲージを消費して進む
+    const wasJetting = this.jetting;
+    this.jetting = false;
+    if (Input.jet()) {
+      if (this.gas > 0) {
+        let dx = a.x, dy = a.y;
+        if (!dx && !dy) dx = this.face;
+        const len = Math.hypot(dx, dy); dx /= len; dy /= len;
+        this.vx += dx * C.JET_ACCEL * dt; this.vy += dy * C.JET_ACCEL * dt;
+        this.gas = Math.max(0, this.gas - C.JET_RATE * dt);
+        this.jetting = true; this.jetDir = {x: dx, y: dy};
+        for (let i = 0; i < 2; i++) FX.jetPuff(this.cx - dx * 16, this.cy - dy * 10, -dx, -dy);
+        if (!wasJetting) { Game.flashOn(); Sound.jetStart(); }
+        if (this.gas <= 0) this.say('おならが切れた…', '#cfd8e3');
+      } else if (!wasJetting && this.msgCool <= 0) {
+        this.say('おならが出ない…', '#cfd8e3');
+      }
+    }
+    if (!this.jetting && wasJetting) Sound.jetStop();
+
+    if (water) {
+      const drag = Math.exp(-C.WATER_DRAG * dt);
+      this.vx *= drag; this.vy *= drag;
+      const sp = Math.hypot(this.vx, this.vy), max = this.jetting ? C.JET_MAX : C.SWIM_MAX;
+      if (sp > max) { const k = Math.exp(-4 * dt); this.vx *= k; this.vy *= k; }
+    }
+
+    this.kick += dt * (Math.hypot(a.x, a.y) > 0.1 || this.jetting ? 12 : 3);
     this.hurt = Math.max(0, this.hurt - dt);
+    this.inv = Math.max(0, this.inv - dt);
+    this.msgCool = Math.max(0, this.msgCool - dt);
     this.move(this.vx * dt, this.vy * dt);
 
     // 酸素とHP
-    const underwater = this.y > World.waterTop - 4;
-    if (underwater) this.o2 = Math.max(0, this.o2 - C.O2_DRAIN * dt);
-    else this.o2 = Math.min(C.O2_MAX, this.o2 + C.O2_SURFACE * dt);
+    if (this.underwater()) {
+      this.o2 = Math.max(0, this.o2 - C.O2_DRAIN * (this.fartAir ? C.FART_AIR_O2_MULT : 1) * dt);
+    } else {
+      this.o2 = Math.min(C.O2_MAX, this.o2 + C.O2_SURFACE * dt);
+      if (this.fartAir) { this.fartAir = false; FX.text(this.cx, this.y - 12, 'ぷはっ！ 新鮮な空気', '#ffffff'); }
+    }
     if (this.o2 <= 0) { this.hp = Math.max(0, this.hp - C.HP_DRAIN * dt); this.hurt = 0.2; }
+    else if (this.fartAir) this.hp = Math.max(0, this.hp - C.FART_AIR_HP_DRAIN * dt);
   },
   move(dx, dy) {
     const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 4) || 1;
@@ -254,37 +309,76 @@ const Player = {
       if (World.hits(this)) { this.y -= dy / steps; this.vy *= -0.2; dy = 0; }
     }
   },
-  fart() {
-    if (this.cool > 0) return;
-    if (this.gas <= 0) { FX.text(this.cx, this.y - 10, 'おならが出ない…', '#cfd8e3'); this.cool = 0.6; return; }
-    const a = Input.axis();
-    let dx = a.x, dy = a.y;
-    if (!dx && !dy) dx = this.face;
-    const len = Math.hypot(dx, dy); dx /= len; dy /= len;
-    this.vx += dx * CONFIG.FART_PUSH; this.vy += dy * CONFIG.FART_PUSH;
-    this.gas--; this.cool = CONFIG.FART_COOLDOWN; this.boost = 0.5;
+  say(s, color) { FX.text(this.cx, this.y - 12, s, color); this.msgCool = 0.8; },
+  // おなら呼吸：緊急用。黄色い泡に包まれ、水面に出るまでおならで呼吸する
+  breathe() {
+    if (!this.underwater()) { if (this.msgCool <= 0) this.say('ここは空気がある！', '#ffffff'); return; }
+    if (this.gas < CONFIG.BREATH_GAS) { if (this.msgCool <= 0) this.say('おならが足りない…', '#cfd8e3'); return; }
+    this.gas -= CONFIG.BREATH_GAS;
     const before = this.o2;
-    this.o2 = Math.min(CONFIG.O2_MAX, this.o2 + CONFIG.FART_O2);
-    FX.fartCloud(this.cx - dx * 14, this.cy - dy * 8, -dx, -dy);
-    FX.text(this.cx, this.y - 10, `ぷぅ！ 酸素+${Math.round(this.o2 - before)}`, '#ff9ec4');
-    Sound.fart();
+    this.o2 = Math.min(CONFIG.O2_MAX, this.o2 + CONFIG.BREATH_O2);
+    this.fartAir = true;
+    Game.flashOn(); Sound.breathe();
+    FX.fartBurst(this.cx, this.cy);
+    this.say(`すぅ…おなら呼吸！ 酸素+${Math.round(this.o2 - before)}`, '#ffe14d');
+  },
+  hit(ex, ey) {
+    if (this.inv > 0) return;
+    this.hp = Math.max(0, this.hp - CONFIG.ENEMY_DAMAGE);
+    this.inv = CONFIG.INVULN; this.hurt = 0.3;
+    let dx = this.cx - ex, dy = this.cy - ey; const len = Math.hypot(dx, dy) || 1;
+    this.vx = dx / len * CONFIG.KNOCKBACK; this.vy = dy / len * CONFIG.KNOCKBACK;
+    FX.text(this.cx, this.y - 12, `いたっ！ -${CONFIG.ENEMY_DAMAGE}`, '#ff8080');
+    Sound.hit();
   },
 };
 
 // ============================================================
-// 6. エフェクト（泡・文字）
+// 6. 敵キャラ
+// ============================================================
+const Enemies = {
+  list: [],
+  load() {
+    this.list = World.spawns.map((s, i) => s.type === 'fish'
+      ? {type: 'fish', x: s.x, y: s.y, baseY: s.y, vx: (i % 2 ? -1 : 1) * 60, r: 11, puff: 0, ph: i * 1.7}
+      : {type: 'jelly', x: s.x, y: s.y, baseX: s.x, baseY: s.y, r: 13, ph: i * 2.3});
+  },
+  update(dt) {
+    for (const e of this.list) {
+      const near = Math.hypot(Player.cx - e.x, Player.cy - e.y);
+      if (e.type === 'fish') {
+        const nx = e.x + e.vx * dt;
+        if (World.solidAt(nx + Math.sign(e.vx) * (e.r + 4), e.y)) e.vx = -e.vx; else e.x = nx;
+        e.y = e.baseY + Math.sin(Game.clock * 2 + e.ph) * 6;
+        e.puff += ((near < 110 ? 1 : 0) - e.puff) * Math.min(1, dt * 5);
+        e.r = 11 + e.puff * 6;
+      } else {
+        e.y = e.baseY + Math.sin(Game.clock * 0.9 + e.ph) * 40;
+        e.x = e.baseX + Math.sin(Game.clock * 0.4 + e.ph) * 14;
+      }
+      if (near < e.r + 10) Player.hit(e.x, e.y);
+    }
+  },
+};
+
+// ============================================================
+// 7. エフェクト（泡・文字）
 // ============================================================
 const FX = {
   parts: [], texts: [],
   bubble(x, y, r = 2 + Math.random() * 2, color = 'rgba(220,245,255,.8)') {
     this.parts.push({x, y, vx: (Math.random() - .5) * 20, vy: -30 - Math.random() * 30, r, life: 1.6 + Math.random(), color});
   },
-  fartCloud(x, y, dx, dy) {
-    for (let i = 0; i < 22; i++) {
-      const s = 60 + Math.random() * 120, sp = (Math.random() - .5) * 1.2;
-      const ang = Math.atan2(dy, dx) + sp;
-      this.parts.push({x, y, vx: Math.cos(ang) * s, vy: Math.sin(ang) * s, r: 3 + Math.random() * 5, life: 1 + Math.random() * .8,
-        color: Math.random() < .5 ? 'rgba(200,230,140,.75)' : 'rgba(255,190,215,.75)'});
+  jetPuff(x, y, dx, dy) {
+    const s = 80 + Math.random() * 120, ang = Math.atan2(dy, dx) + (Math.random() - .5) * 0.9;
+    this.parts.push({x, y, vx: Math.cos(ang) * s, vy: Math.sin(ang) * s, r: 2.5 + Math.random() * 4, life: 0.7 + Math.random() * .6,
+      color: Math.random() < .5 ? 'rgba(200,230,140,.75)' : 'rgba(255,190,215,.75)'});
+  },
+  fartBurst(x, y) {
+    for (let i = 0; i < 26; i++) {
+      const ang = Math.random() * Math.PI * 2, s = 40 + Math.random() * 90;
+      this.parts.push({x, y, vx: Math.cos(ang) * s, vy: Math.sin(ang) * s, r: 3 + Math.random() * 5, life: 0.8 + Math.random() * .7,
+        color: 'rgba(255,225,80,.8)'});
     }
   },
   text(x, y, s, color) { this.texts.push({x, y, s, color, life: 1.4}); },
@@ -301,22 +395,47 @@ const FX = {
 };
 
 // ============================================================
-// 7. サウンド（Web Audioで合成。ファイル不要）
+// 8. サウンド（Web Audioで合成。ファイル不要）
 // ============================================================
 const Sound = {
-  ctx: null,
+  ctx: null, jet: null,
   init() { if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } this.ctx?.resume?.().catch(() => {}); },
-  fart() {
-    const c = this.ctx; if (!c) return;
-    const t = c.currentTime, dur = 0.45;
-    const o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter();
-    o.type = 'sawtooth'; o.frequency.setValueAtTime(95, t); o.frequency.exponentialRampToValueAtTime(55, t + dur);
+  // 噴射中ずっと鳴る「ぶぼぼぼ…」
+  jetStart() {
+    const c = this.ctx; if (!c || this.jet) return;
+    const t = c.currentTime, o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter();
     const lfo = c.createOscillator(), lg = c.createGain();
-    lfo.frequency.value = 28; lg.gain.value = 25; lfo.connect(lg); lg.connect(o.frequency);
-    f.type = 'lowpass'; f.frequency.value = 600;
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.35, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(115, t); o.frequency.exponentialRampToValueAtTime(70, t + 2.5);
+    lfo.frequency.value = 24; lg.gain.value = 22; lfo.connect(lg); lg.connect(o.frequency);
+    f.type = 'lowpass'; f.frequency.value = 550;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.04);
     o.connect(f); f.connect(g); g.connect(c.destination);
-    o.start(t); lfo.start(t); o.stop(t + dur); lfo.stop(t + dur);
+    o.start(t); lfo.start(t);
+    this.jet = {o, lfo, g};
+  },
+  jetStop() {
+    const c = this.ctx, j = this.jet; if (!c || !j) return;
+    const t = c.currentTime;
+    j.g.gain.cancelScheduledValues(t); j.g.gain.setTargetAtTime(0.0001, t, 0.04);
+    j.o.stop(t + 0.25); j.lfo.stop(t + 0.25);
+    this.jet = null;
+  },
+  breathe() {
+    const c = this.ctx; if (!c) return;
+    const t = c.currentTime, dur = 0.55;
+    const o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(70, t); o.frequency.exponentialRampToValueAtTime(140, t + dur);
+    f.type = 'lowpass'; f.frequency.value = 700;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.3, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(f); f.connect(g); g.connect(c.destination); o.start(t); o.stop(t + dur);
+    this.ding(660);
+  },
+  hit() {
+    const c = this.ctx; if (!c) return;
+    const t = c.currentTime, o = c.createOscillator(), g = c.createGain();
+    o.type = 'square'; o.frequency.setValueAtTime(220, t); o.frequency.exponentialRampToValueAtTime(70, t + 0.25);
+    g.gain.setValueAtTime(0.15, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 0.25);
   },
   ding(freq = 880) {
     const c = this.ctx; if (!c) return;
@@ -328,54 +447,61 @@ const Sound = {
 };
 
 // ============================================================
-// 8. ゲーム進行
+// 9. ゲーム進行
 // ============================================================
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const Game = {
-  state: 'title', time: 0, total: 0, cam: {x: 0, y: 0}, scale: 1, bubbleT: 0, clock: 0,
+  state: 'title', time: 0, total: 0, cam: {x: 0, y: 0}, scale: 1, bubbleT: 0, clock: 0, dt: 0, flash: 0,
   reset() {
-    World.load(); Player.reset();
+    World.load(); Player.reset(); Enemies.load();
     FX.parts = []; FX.texts = [];
     this.total = World.items.filter(i => i.type === 'treasure').length;
-    this.time = 0;
+    this.time = 0; this.flash = 0;
     this.cam.x = Player.cx; this.cam.y = Player.cy;
   },
-  start() { this.reset(); this.state = 'play'; UI.hide(); },
+  start() { Input.clear(); this.reset(); this.state = 'play'; UI.hide(); },
+  flashOn() { this.flash = 1; },
   update(dt) {
-    this.clock += dt;
-    if (this.state !== 'play') { FX.update(dt); return; }
+    this.clock += dt; this.dt = dt;
+    this.flash = Math.max(0, this.flash - dt * 3.5);
+    if (this.state !== 'play') { Sound.jetStop(); FX.update(dt); return; }
     this.time += dt;
-    if (Input.fartQueued) { Player.fart(); Input.fartQueued = false; }
+    if (Input.breathQueued) { Player.breathe(); Input.breathQueued = false; }
     Player.update(dt);
+    Enemies.update(dt);
 
     // アイテム取得
     for (const it of World.items) {
       if (it.got || Math.hypot(it.x - Player.cx, it.y - Player.cy) > 24) continue;
-      it.got = true;
       if (it.type === 'treasure') {
-        Player.treasure++; Sound.ding(880);
+        it.got = true; Player.treasure++; Sound.ding(880);
         FX.text(it.x, it.y - 16, `宝物ゲット！ ${Player.treasure}/${this.total}`, '#ffd25e');
         if (Player.treasure === this.total) FX.text(it.x, it.y + 4, 'スタート地点へ戻ろう！', '#ffffff');
-      } else if (it.type === 'bean') {
+      } else if (it.type === 'bean' && Player.gas < CONFIG.GAS_MAX) { // 満タンのときは豆を残しておく
+        it.got = true;
         const add = Math.min(CONFIG.BEAN_GAS, CONFIG.GAS_MAX - Player.gas);
         Player.gas += add; Sound.ding(520);
-        FX.text(it.x, it.y - 16, add ? `豆を食べた！ おなら+${add}` : 'おなかいっぱい', '#b6f08a');
+        FX.text(it.x, it.y - 16, `豆を食べた！ おなら+${Math.round(add)}`, '#b6f08a');
       }
     }
 
-    // ときどき口から泡
+    // ときどき口から泡（おなら呼吸中は黄色）
     this.bubbleT -= dt;
-    if (this.bubbleT <= 0 && Player.inWater()) { FX.bubble(Player.cx + Player.face * 12, Player.y + 2); this.bubbleT = 0.5 + Math.random() * .6; }
+    if (this.bubbleT <= 0 && Player.inWater()) {
+      FX.bubble(Player.cx + Player.face * 14, Player.y, undefined, Player.fartAir ? 'rgba(255,225,80,.85)' : undefined);
+      this.bubbleT = Player.fartAir ? 0.25 : 0.5 + Math.random() * .6;
+    }
     FX.update(dt);
 
-    // クリア判定・ゲームオーバー判定
+    // ゲームオーバー判定を先に、その後クリア判定
+    if (Player.hp <= 0) { this.state = 'over'; Sound.jetStop(); UI.show('over'); return; }
     const home = Math.hypot(Player.cx - World.start.x, Player.cy - World.start.y) < 70;
-    if (Player.treasure === this.total && home) { this.state = 'clear'; Sound.ding(1040); UI.show('clear'); }
-    if (Player.hp <= 0) { this.state = 'over'; UI.show('over'); }
+    if (Player.treasure === this.total && home) { this.state = 'clear'; Sound.jetStop(); Sound.ding(1040); UI.show('clear'); }
   },
 };
 
 // ============================================================
-// 9. 描画
+// 10. 描画
 // ============================================================
 const cv = document.getElementById('game'), ctx = cv.getContext('2d');
 let vw = 0, vh = 0, dpr = 1;
@@ -393,10 +519,11 @@ const Render = {
   draw() {
     const s = Game.scale, cam = Game.cam;
     const viewW = vw / s, viewH = vh / s;
-    // カメラ追従（ワールドの外は映さない）
-    cam.x += (Player.cx - cam.x) * 0.12; cam.y += (Player.cy - cam.y) * 0.12;
+    // カメラ追従（フレームレートに依存しない補間。上端はHUDの分だけ余白を取る）
+    const k = 1 - Math.exp(-7 * Game.dt);
+    cam.x += (Player.cx - cam.x) * k; cam.y += (Player.cy - cam.y) * k;
     const cx = Math.max(viewW / 2, Math.min(World.w - viewW / 2, cam.x));
-    const cy = Math.max(viewH / 2 - 60, Math.min(World.h - viewH / 2, cam.y));
+    const cy = Math.max(viewH / 2 - 120 / s, Math.min(World.h - viewH / 2, cam.y));
     const ox = cx - viewW / 2, oy = cy - viewH / 2;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -407,6 +534,7 @@ const Render = {
     this.tiles(ox, oy, viewW, viewH);
     this.boat();
     this.items();
+    this.enemies();
     this.player();
     this.particles();
     this.surface(ox, viewW);
@@ -419,7 +547,14 @@ const Render = {
     const g = ctx.createRadialGradient(px, py, 60 * s, px, py, 260 * s);
     g.addColorStop(0, 'rgba(2,8,20,0)'); g.addColorStop(1, `rgba(2,8,20,${0.75 * depth})`);
     ctx.fillStyle = g; ctx.fillRect(0, 0, vw, vh);
-    if (Player.hurt > 0) { ctx.fillStyle = `rgba(255,60,60,${0.12 + 0.08 * Math.sin(Game.clock * 12)})`; ctx.fillRect(0, 0, vw, vh); }
+    if (Player.hurt > 0) {
+      const a = reduceMotion ? 0.14 : 0.12 + 0.08 * Math.sin(Game.clock * 12);
+      ctx.fillStyle = `rgba(255,60,60,${a})`; ctx.fillRect(0, 0, vw, vh);
+    }
+    // おならの黄色フラッシュ
+    if (Game.flash > 0) {
+      ctx.fillStyle = `rgba(255,228,70,${(reduceMotion ? 0.15 : 0.42) * Game.flash})`; ctx.fillRect(0, 0, vw, vh);
+    }
     this.homeArrow(ox, oy, s);
   },
   background(ox, oy, w, h) {
@@ -466,8 +601,9 @@ const Render = {
     ctx.fillStyle = '#ff7fae'; ctx.beginPath(); ctx.moveTo(0, -76); ctx.lineTo(30, -58); ctx.lineTo(0, -40); ctx.fill();
     ctx.fillStyle = '#c4533a'; ctx.beginPath(); ctx.moveTo(-50, -24); ctx.lineTo(50, -24); ctx.lineTo(36, 4); ctx.lineTo(-36, 4); ctx.fill();
     ctx.fillStyle = '#f3efe4'; ctx.fillRect(-46, -24, 92, 5);
-    ctx.fillStyle = '#ffffff'; ctx.font = '800 13px "M PLUS Rounded 1c",sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('スタート', 0, -88);
+    ctx.font = '800 13px "M PLUS Rounded 1c",sans-serif'; ctx.textAlign = 'center';
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,40,70,.6)'; ctx.strokeText('スタート', 0, -88);
+    ctx.fillStyle = '#ffffff'; ctx.fillText('スタート', 0, -88);
     ctx.restore();
   },
   items() {
@@ -487,23 +623,106 @@ const Render = {
       ctx.restore();
     }
   },
+  enemies() {
+    for (const e of Enemies.list) {
+      ctx.save(); ctx.translate(e.x, e.y);
+      if (e.type === 'fish') {
+        ctx.scale(e.vx < 0 ? -1 : 1, 1);
+        const r = e.r;
+        // トゲ（近づくとふくらんで伸びる）
+        ctx.strokeStyle = '#a8461f'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+        const sl = 3 + e.puff * 5;
+        for (let i = 0; i < 12; i++) {
+          const a = i / 12 * Math.PI * 2;
+          ctx.beginPath(); ctx.moveTo(Math.cos(a) * r * .9, Math.sin(a) * r * .9); ctx.lineTo(Math.cos(a) * (r + sl), Math.sin(a) * (r + sl)); ctx.stroke();
+        }
+        // 尾びれ
+        const tw = Math.sin(Game.clock * 10 + e.ph) * 3;
+        ctx.fillStyle = '#e0762f'; ctx.beginPath(); ctx.moveTo(-r + 2, 0); ctx.lineTo(-r - 10, -7 + tw); ctx.lineTo(-r - 10, 7 + tw); ctx.fill();
+        // 体
+        ctx.fillStyle = '#ff9f43'; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill();
+        ctx.fillStyle = '#ffd9a0'; ctx.beginPath(); ctx.ellipse(1, r * .35, r * .7, r * .45, 0, 0, 7); ctx.fill();
+        // 目（怒り眉）
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(r * .45, -r * .25, 3.6, 0, 7); ctx.fill();
+        ctx.fillStyle = '#1b1b2e'; ctx.beginPath(); ctx.arc(r * .55, -r * .22, 1.8, 0, 7); ctx.fill();
+        ctx.strokeStyle = '#5a2210'; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.moveTo(r * .2, -r * .55); ctx.lineTo(r * .75, -r * .4); ctx.stroke();
+      } else {
+        const pulse = 1 + Math.sin(Game.clock * 3 + e.ph) * 0.08, r = e.r;
+        // 触手
+        ctx.strokeStyle = 'rgba(230,170,255,.7)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+        for (let i = 0; i < 5; i++) {
+          const bx = -r * .7 + i * r * .35;
+          ctx.beginPath(); ctx.moveTo(bx, 2);
+          for (let k = 1; k <= 4; k++) ctx.lineTo(bx + Math.sin(Game.clock * 3 + i + k) * 3, 2 + k * 5);
+          ctx.stroke();
+        }
+        // かさ
+        ctx.fillStyle = 'rgba(200,140,255,.25)'; ctx.beginPath(); ctx.arc(0, -2, r * 1.5, 0, 7); ctx.fill();
+        ctx.fillStyle = 'rgba(205,150,255,.85)';
+        ctx.beginPath(); ctx.ellipse(0, 0, r * pulse, r * .9 / pulse, 0, Math.PI, 0); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.beginPath(); ctx.ellipse(-r * .35, -r * .5, 3.5, 2, -0.5, 0, 7); ctx.fill();
+        ctx.fillStyle = '#3a1550';
+        ctx.beginPath(); ctx.arc(-4, -3, 1.6, 0, 7); ctx.arc(4, -3, 1.6, 0, 7); ctx.fill();
+      }
+      ctx.restore();
+    }
+  },
   player() {
-    const p = Player, k = Math.sin(p.kick) * 4;
-    ctx.save(); ctx.translate(p.cx, p.cy); ctx.scale(p.face, 1);
+    const p = Player, k = Math.sin(p.kick) * 4, arm = Math.sin(p.kick + 1.4) * 4;
+    ctx.save(); ctx.translate(p.cx, p.cy);
+
+    // おなら呼吸中の黄色い泡
+    if (p.fartAir) {
+      const wob = Math.sin(Game.clock * 5) * 1.5;
+      ctx.fillStyle = 'rgba(255,225,70,.22)'; ctx.strokeStyle = 'rgba(255,235,120,.85)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(0, 0, 27 + wob, 22 - wob, 0, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,220,.7)'; ctx.beginPath(); ctx.ellipse(-10, -12, 5, 2.5, -0.5, 0, 7); ctx.fill();
+    }
+
+    ctx.scale(p.face, 1);
     const tilt = Math.max(-0.5, Math.min(0.5, p.vy / 300)); ctx.rotate(tilt * p.face);
-    if (p.hurt > 0 && Math.sin(Game.clock * 30) > 0) ctx.globalAlpha = 0.6;
-    // 足ひれ
-    ctx.fillStyle = '#ffd25e';
-    ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(-26, -5 + k); ctx.lineTo(-26, 5 + k); ctx.fill();
-    // 体
-    ctx.fillStyle = '#ff8a3d'; ctx.beginPath(); ctx.ellipse(-2, 0, 13, 7, 0, 0, 7); ctx.fill();
-    // タンク
-    ctx.fillStyle = '#c9d6e3'; ctx.fillRect(-10, -11, 14, 5);
-    // 頭とマスク
-    ctx.fillStyle = '#ffd9b8'; ctx.beginPath(); ctx.arc(12, -1, 7, 0, 7); ctx.fill();
-    ctx.fillStyle = '#4fd6f0'; ctx.beginPath(); ctx.ellipse(15, -2, 4, 3.5, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.fillRect(15, -4, 2, 2);
-    if (p.boost > 0) { ctx.fillStyle = `rgba(255,158,196,${p.boost})`; ctx.beginPath(); ctx.arc(-18, 0, 8 * p.boost + 4, 0, 7); ctx.fill(); }
+    if (p.inv > 0 && Math.sin(Game.clock * 30) > 0) ctx.globalAlpha = 0.45;
+    else if (p.hurt > 0 && Math.sin(Game.clock * 30) > 0) ctx.globalAlpha = 0.6;
+
+    const G = '#5fd35a', D = '#2a7d34';
+    // 手足（縁取り→本体の順）
+    const limbs = [
+      [-8, 1, -16, 1 + k, -24, 0 + k * 1.2],   // 足
+      [-8, 4, -16, 5 - k, -23, 6 - k * 1.2],   // 足
+      [5, 3, 10, 8 + arm, 16, 7 + arm],        // 手
+      [3, 2, -1, 7 - arm, -4, 10 - arm],       // 手
+    ];
+    ctx.lineCap = 'round';
+    for (const [lw, col] of [[8, D], [5, G]]) {
+      ctx.lineWidth = lw; ctx.strokeStyle = col;
+      for (const [x0, y0, x1, y1, x2, y2] of limbs) { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(x1, y1, x2, y2); ctx.stroke(); }
+    }
+    // 体と頭（縁取り）
+    ctx.fillStyle = D;
+    ctx.beginPath(); ctx.ellipse(-1, 2, 12.5, 8, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(11, -3, 9.5, 0, 7); ctx.fill();
+    // 体と頭（本体）
+    ctx.fillStyle = G;
+    ctx.beginPath(); ctx.ellipse(-1, 2, 11, 6.5, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(11, -3, 8, 0, 7); ctx.fill();
+    // とろっと垂れるしずく
+    const drip = 7 + Math.sin(Game.clock * 3) * 1.5;
+    ctx.beginPath(); ctx.arc(-5, drip, 2.2, 0, 7); ctx.fill();
+    // ツヤ
+    ctx.fillStyle = 'rgba(230,255,215,.8)';
+    ctx.beginPath(); ctx.ellipse(8, -8, 3.2, 1.8, -0.4, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-5, -2, 4, 1.4, 0, 0, 7); ctx.fill();
+    // 目と口
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.ellipse(12, -4, 2.4, 3, 0, 0, 7); ctx.ellipse(16.8, -4.3, 2.1, 2.7, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#16301a';
+    ctx.beginPath(); ctx.arc(12.8, -3.8, 1.3, 0, 7); ctx.arc(17.4, -4, 1.2, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#16301a'; ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    if (p.fartAir || p.o2 < 20) ctx.arc(15, 1.5, 1.6, 0, 7); // 苦しい「むぐ」口
+    else ctx.arc(14.5, 0, 2.2, 0.3, Math.PI - 0.3);
+    ctx.stroke();
     ctx.restore();
   },
   particles() {
@@ -543,44 +762,50 @@ const Render = {
 };
 
 // ============================================================
-// 10. HUD と画面オーバーレイ
+// 11. HUD と画面オーバーレイ
 // ============================================================
 const $ = id => document.getElementById(id);
 const HELP = `<dl>
   <dt>泳ぐ</dt><dd>矢印キー / WASD<br>スマホ：画面をドラッグ（どこでもOK）</dd>
-  <dt>おなら</dt><dd>Space / J キー<br>スマホ：右下のピンクのボタン</dd>
+  <dt>おなら噴射</dt><dd>Space / J を<b>長押し</b><br>スマホ：ピンクのボタンを長押し</dd>
+  <dt class="y">おなら呼吸</dt><dd>K / E キー<br>スマホ：黄色いボタン</dd>
   <dt>一時停止</dt><dd>Esc / H キー、または右上の「?」</dd>
 </dl>
-<p>水中では<b>酸素</b>が減っていき、ゼロになると<b>HP</b>が減ります。水面に出るか<b>おなら</b>で酸素を回復！おならは泳いでいる方向への推進力にもなります。おならは数に限りがあるので、海底の<b>豆</b>を食べて補給しましょう。</p>`;
+<p>スライムの体は重くて<b>沈みやすく、上に泳ぐのは苦手</b>。押している間だけおならゲージを使って<b>噴射</b>し、すいすい進もう。</p>
+<p>酸素が尽きそうなら<b class="y">おなら呼吸</b>で緊急回復。ただし黄色い泡に包まれておならで息をすることになり、水面に出るまで<b>酸素の減りが速く、HPも少しずつ減ります</b>。</p>
+<p>クラゲやトゲトゲ魚に当たるとダメージ。おならは海底の<b>豆</b>で補給できます。</p>`;
 
 const UI = {
   show(kind) {
     const card = $('card'), p = Player;
     const time = `${Math.floor(Game.time / 60)}分${String(Math.floor(Game.time % 60)).padStart(2, '0')}秒`;
     if (kind === 'title') card.innerHTML = `<h1>プクプク<span>海底探検</span></h1>
-      <p>海に沈んだ宝物を${Game.total || 4}つ集めて、スタートの船まで帰ってこよう。</p>${HELP}
+      <p>緑のスライムになって、海に沈んだ宝物を${Game.total}つ集め、スタートの船まで帰ってこよう。</p>${HELP}
       <button class="go" id="goBtn">はじめる</button>`;
     if (kind === 'help') card.innerHTML = `<h1>操作方法</h1>${HELP}<button class="go" id="goBtn">つづける</button>`;
     if (kind === 'clear') card.innerHTML = `<h1>帰還成功！</h1><div class="big">タイム ${time}</div>
-      <p>宝物 ${p.treasure}/${Game.total}・残りHP ${Math.ceil(p.hp)}・おなら残り ${p.gas}</p><button class="go" id="goBtn">もう一度あそぶ</button>`;
-    if (kind === 'over') card.innerHTML = `<h1>力尽きた…</h1><p>酸素切れに注意。深く潜る前におならの残りを確認しよう。</p>
+      <p>宝物 ${p.treasure}/${Game.total}・残りHP ${Math.ceil(p.hp)}・おなら残り ${Math.round(p.gas)}%</p><button class="go" id="goBtn">もう一度あそぶ</button>`;
+    if (kind === 'over') card.innerHTML = `<h1>力尽きた…</h1><p>酸素切れと敵に注意。おなら呼吸は水面に出るまでHPが減り続けるので、早めに浮上しよう。</p>
       <p>集めた宝物 ${p.treasure}/${Game.total}</p><button class="go" id="goBtn">リトライ</button>`;
     $('overlay').hidden = false;
     $('goBtn').onclick = () => { Sound.init(); kind === 'help' ? UI.resume() : Game.start(); };
     $('goBtn').focus();
   },
   hide() { $('overlay').hidden = true; },
-  pause() { if (Game.state === 'play') { Game.state = 'pause'; UI.show('help'); } },
+  pause() { if (Game.state === 'play') { Game.state = 'pause'; Input.clear(); Sound.jetStop(); UI.show('help'); } },
   resume() { if (Game.state === 'pause') { Game.state = 'play'; UI.hide(); } },
   hud() {
     const p = Player;
     $('o2').style.width = (p.o2 / CONFIG.O2_MAX * 100) + '%';
     $('hp').style.width = (p.hp / CONFIG.HP_MAX * 100) + '%';
+    $('gas').style.width = (p.gas / CONFIG.GAS_MAX * 100) + '%';
+    $('o2').classList.toggle('fart', p.fartAir);
+    $('o2Label').classList.toggle('fart', p.fartAir);
     $('o2').parentElement.classList.toggle('low', p.o2 < 25);
-    $('hp').parentElement.classList.toggle('low', p.o2 <= 0);
-    const gasHtml = Array.from({length: CONFIG.GAS_MAX}, (_, i) => `<b class="${i < p.gas ? '' : 'off'}"></b>`).join('');
-    if ($('gas').innerHTML !== gasHtml) $('gas').innerHTML = gasHtml;
-    $('fartBtn').classList.toggle('empty', p.gas <= 0);
+    $('hp').parentElement.classList.toggle('low', p.o2 <= 0 || p.fartAir || p.hp < 25);
+    $('gas').parentElement.classList.toggle('low', p.gas > 0 && p.gas < CONFIG.BREATH_GAS);
+    $('jetBtn').classList.toggle('empty', p.gas <= 0);
+    $('breathBtn').classList.toggle('empty', p.gas < CONFIG.BREATH_GAS);
     const done = p.treasure >= Game.total;
     const goal = done ? `<span class="t">船へ帰還せよ！</span><br>黄色の矢印の方向へ`
                       : `<span class="t">宝物 ${p.treasure} / ${Game.total}</span><br>海底や洞窟を探そう`;
@@ -589,22 +814,22 @@ const UI = {
 };
 
 // ============================================================
-// 11. イベント登録
+// 12. イベント登録
 // ============================================================
 addEventListener('keydown', e => {
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
   Sound.init();
   if (e.code === 'Escape' || e.code === 'KeyH') { Game.state === 'play' ? UI.pause() : UI.resume(); return; }
-  if ((e.code === 'Space' || e.code === 'KeyJ') && !e.repeat) {
-    if (Game.state === 'play') Input.fartQueued = true;
-    else if ($('overlay').hidden === false && Game.state !== 'pause') $('goBtn').click();
+  if (!$('overlay').hidden) {
+    // ボタン標準のクリックと二重にならないよう、ここで一度だけ押す
+    if ((e.code === 'Enter' || e.code === 'Space') && !e.repeat) { e.preventDefault(); $('goBtn').click(); }
     return;
   }
-  if (e.code === 'Enter' && !$('overlay').hidden) { $('goBtn').click(); return; }
+  if (Game.state === 'play' && (e.code === 'KeyK' || e.code === 'KeyE') && !e.repeat) { Input.breathQueued = true; return; }
   Input.keys.add(e.code);
 });
 addEventListener('keyup', e => Input.keys.delete(e.code));
-addEventListener('blur', () => Input.keys.clear());
+addEventListener('blur', () => Input.clear());
 
 // タッチ用バーチャルスティック（画面のどこでもドラッグで操作）
 const stickEl = $('stick'), knob = $('knob'), R = 50;
@@ -626,16 +851,30 @@ cv.addEventListener('pointermove', e => {
 const endStick = e => { if (e.pointerId !== Input.stick.id) return; Object.assign(Input.stick, {id: null, x: 0, y: 0}); stickEl.style.display = 'none'; };
 cv.addEventListener('pointerup', endStick); cv.addEventListener('pointercancel', endStick);
 
-const fartBtn = $('fartBtn');
-fartBtn.addEventListener('pointerdown', e => { e.preventDefault(); Sound.init(); fartBtn.classList.add('press'); if (Game.state === 'play') Input.fartQueued = true; });
-['pointerup', 'pointerleave', 'pointercancel'].forEach(n => fartBtn.addEventListener(n, () => fartBtn.classList.remove('press')));
-$('helpBtn').addEventListener('click', () => Game.state === 'play' ? UI.pause() : UI.resume());
+// おなら噴射ボタン（押している間ずっと）
+const jetBtn = $('jetBtn');
+jetBtn.addEventListener('pointerdown', e => {
+  e.preventDefault(); Sound.init();
+  if (Game.state !== 'play') return;
+  Input.jetTouch = e.pointerId; jetBtn.setPointerCapture(e.pointerId); jetBtn.classList.add('press');
+});
+const endJet = e => { if (e.pointerId === Input.jetTouch) Input.jetTouch = null; jetBtn.classList.remove('press'); };
+jetBtn.addEventListener('pointerup', endJet); jetBtn.addEventListener('pointercancel', endJet);
+
+// おなら呼吸ボタン（1回押し）
+const breathBtn = $('breathBtn');
+breathBtn.addEventListener('pointerdown', e => {
+  e.preventDefault(); Sound.init(); breathBtn.classList.add('press');
+  if (Game.state === 'play') Input.breathQueued = true;
+});
+['pointerup', 'pointerleave', 'pointercancel'].forEach(n => breathBtn.addEventListener(n, () => breathBtn.classList.remove('press')));
+
+$('helpBtn').addEventListener('click', e => { Game.state === 'play' ? UI.pause() : UI.resume(); e.currentTarget.blur(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) UI.pause(); });
-if (!matchMedia('(pointer:coarse)').matches) fartBtn.querySelector('small').textContent = 'Space';
-else fartBtn.querySelector('small').textContent = '';
+if (matchMedia('(pointer:coarse)').matches) document.querySelectorAll('.fbtn small').forEach(el => el.remove());
 
 // ============================================================
-// 12. メインループ
+// 13. メインループ
 // ============================================================
 let last = performance.now();
 function loop(now) {
