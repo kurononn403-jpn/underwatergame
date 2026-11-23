@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>プクプク海底探検</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap" rel="stylesheet">
+<style>
+/*
+VOICE: 明るくとぼけた海のアドベンチャー
+IDEA: 潜水士の手首計器と海中の世界
+PICTURE: ゲーム画面そのもの（全画面キャンバス）
+COLOUR and TYPE: 深い青緑の海、珊瑚ピンクのおなら、金の宝物／M PLUS Rounded 1c
+LAYOUT: 全画面ゲーム、左上に計器、右下におならボタン
+*/
+:root{color-scheme:dark;--ink:#eaf8ff;--panel:rgba(4,24,44,.72);--o2:#4fd6f0;--hp:#ff6b6b;--gas:#ff9ec4;--gold:#ffd25e}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0;height:100%;overflow:hidden;background:#061a33;color:var(--ink);
+  font:16px/1.5 "M PLUS Rounded 1c","Hiragino Maru Gothic ProN",system-ui,sans-serif;
+  touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+button{font:inherit;color:inherit;cursor:pointer;border:0}
+button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+#hud{position:fixed;top:max(10px,env(safe-area-inset-top));left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));
+  display:flex;gap:10px;align-items:flex-start;pointer-events:none}
+.gauges{background:var(--panel);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:8px 12px;display:grid;gap:4px;width:min(250px,55vw)}
+.row{display:grid;grid-template-columns:3.6em 1fr;align-items:center;gap:8px;font-size:13px;font-weight:800}
+.bar{height:11px;border-radius:6px;background:rgba(255,255,255,.14);overflow:hidden}
+.bar i{display:block;height:100%;width:100%;border-radius:6px;transition:width .1s linear}
+#o2{background:linear-gradient(90deg,#2aa8d8,var(--o2))}
+#hp{background:linear-gradient(90deg,#e04848,var(--hp))}
+.low{animation:blink .5s steps(2) infinite}
+@keyframes blink{50%{opacity:.35}}
+#gas{display:flex;gap:4px}
+#gas b{width:15px;height:15px;border-radius:50%;background:var(--gas);box-shadow:inset -3px -3px 0 rgba(0,0,0,.18)}
+#gas b.off{background:rgba(255,255,255,.14);box-shadow:none}
+#goal{background:var(--panel);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:8px 12px;font-size:13px;font-weight:800;line-height:1.35}
+#goal .t{color:var(--gold);font-size:17px}
+#helpBtn{pointer-events:auto;margin-left:auto;width:44px;height:44px;border-radius:50%;background:var(--panel);border:1px solid rgba(255,255,255,.25);font-size:20px;font-weight:800;flex:none}
+
+#fartBtn{position:fixed;right:max(18px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));
+  width:96px;height:96px;border-radius:50%;font-weight:800;font-size:17px;line-height:1.1;
+  background:radial-gradient(circle at 35% 30%,#ffc6dc,#ff7fae 60%,#d9578a);color:#4a1028;
+  box-shadow:0 6px 0 #a33a66,0 10px 24px rgba(0,0,0,.35)}
+#fartBtn small{display:block;font-size:11px;opacity:.8}
+#fartBtn:active,#fartBtn.press{transform:translateY(4px);box-shadow:0 2px 0 #a33a66,0 4px 12px rgba(0,0,0,.35)}
+#fartBtn.empty{filter:grayscale(1) brightness(.7)}
+
+#stick{position:fixed;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.35);background:rgba(255,255,255,.08);display:none;pointer-events:none}
+#knob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:rgba(255,255,255,.45)}
+
+#overlay{position:fixed;inset:0;display:grid;place-items:center;padding:16px;background:rgba(3,14,30,.62);backdrop-filter:blur(3px)}
+#overlay[hidden]{display:none}
+.card{width:min(460px,100%);max-height:100%;overflow:auto;background:linear-gradient(180deg,#0d3b5e,#082640);border:1px solid rgba(255,255,255,.18);
+  border-radius:22px;padding:22px 22px 20px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.card h1{font-size:clamp(28px,7vw,40px);line-height:1.05;margin:0 0 6px;font-weight:800;text-wrap:balance}
+.card h1 span{color:var(--gas)}
+.card p{margin:0 0 12px;font-size:15px;opacity:.92}
+.card dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0 0 14px;font-size:14px}
+.card dt{font-weight:800;color:var(--gold);white-space:nowrap}
+.card dd{margin:0}
+.card .big{font-size:22px;font-weight:800;color:var(--gold);margin-bottom:8px}
+.card .go{width:100%;min-height:52px;border-radius:14px;background:var(--gold);color:#3a2600;font-weight:800;font-size:18px;box-shadow:0 4px 0 #b88a14}
+.card .go:active{transform:translateY(3px);box-shadow:0 1px 0 #b88a14}
+.card .note{font-size:12px;opacity:.65;margin-top:10px}
+@media(max-width:600px){.row{font-size:12px}#goal{font-size:12px}#goal .t{font-size:15px}}
+@media(prefers-reduced-motion:reduce){.low{animation:none}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div class="gauges">
+    <div class="row"><span>酸素</span><div class="bar"><i id="o2"></i></div></div>
+    <div class="row"><span>HP</span><div class="bar"><i id="hp"></i></div></div>
+    <div class="row"><span>おなら</span><div id="gas"></div></div>
+  </div>
+  <div id="goal"></div>
+  <button id="helpBtn" aria-label="操作方法">?</button>
+</div>
+
+<button id="fartBtn">おなら<small>Space</small></button>
+<div id="stick"><div id="knob"></div></div>
+
+<div id="overlay"><div class="card" id="card"></div></div>
+
+<script>
+{
+// ============================================================
+// 1. 設定値（ゲームバランスはここを調整）
+// ============================================================
+const CONFIG = {
+  TILE: 32,
+  VIEW: 420,             // 画面の短い辺に映る範囲（ワールド座標px）
+  O2_MAX: 100,
+  O2_DRAIN: 2.4,         // 水中で1秒あたりに減る酸素
+  O2_SURFACE: 45,        // 水面で1秒あたりに回復する酸素
+  HP_MAX: 100,
+  HP_DRAIN: 9,           // 酸素ゼロのとき1秒あたりに減るHP
+  GAS_MAX: 5,            // おならの最大残量
+  GAS_START: 5,
+  FART_O2: 35,           // おなら1回で回復する酸素
+  FART_PUSH: 430,        // おならの推進力
+  FART_COOLDOWN: 0.35,
+  BEAN_GAS: 2,           // 豆を拾ったときのおなら回復量
+  SWIM_ACCEL: 650,
+  SWIM_MAX: 165,
+  WATER_DRAG: 2.0,
+  GRAVITY: 900,          // 水面より上での重力
+};
+
+// ============================================================
+// 2. マップ（1文字=1マス）
+//    ' ' 空  '.' 水  '#' 岩  'S' スタート  'T' 宝物  'B' 豆（おなら補給）
+// ============================================================
+const MAP = [
+  "                                                            ",
+  "                                                            ",
+  "                                                            ",
+  "...S........................................................",
+  "............................................................",
+  "............................................................",
+  "............................................................",
+  "##..........................................................",
+  "###.......................................####..............",
+  "####....B...............................######..............",
+  "#####.................................#########.............",
+  "#######..............................##########.............",
+  "#########...........................####....###.....T.......",
+  "##########.........................####......###............",
+  "###########......................#####...B..................",
+  "############....................######...####..##...........",
+  "#############.................#######..######..###..........",
+  "##############...............#######..##...##...###.........",
+  "###############............#########..#..T..#...####........",
+  "################..........##########..#.....#...#####.......",
+  "#################.........##########..###.###...######......",
+  "##################........##########..........#########.....",
+  "###################.......#####################.#######.....",
+  "####################.......####################..######.....",
+  "#####################.......###################...#####.....",
+  "######################........#########.......B...####......",
+  "#######################................................#....",
+  "########################.............................###....",
+  "#########################.....######################.####...",
+  "##########################...##################.....###.....",
+  "###########################..#########.....T........##......",
+  "###########################......##........#####.........T..",
+  "#############################..........###########..........",
+  "##############################......###############.........",
+  "############################################################",
+  "############################################################",
+];
+
+// ============================================================
+// 3. ワールド
+// ============================================================
+const T = CONFIG.TILE;
+const World = {
+  cols: MAP[0].length, rows: MAP.length,
+  grid: [], items: [], start: {x: 0, y: 0}, waterTop: 0,
+  load() {
+    this.grid = MAP.map(r => r.split(''));
+    this.items = [];
+    this.waterTop = MAP.findIndex(r => r.includes('.')) * T;
+    this.grid.forEach((row, ty) => row.forEach((c, tx) => {
+      const cx = tx * T + T / 2, cy = ty * T + T / 2;
+      if (c === 'S') this.start = {x: cx, y: cy};
+      if (c === 'T') this.items.push({type: 'treasure', x: cx, y: cy, got: false});
+      if (c === 'B') this.items.push({type: 'bean', x: cx, y: cy, got: false});
+      if ('STB'.includes(c)) row[tx] = ty * T >= this.waterTop ? '.' : ' ';
+    }));
+  },
+  get w() { return this.cols * T; },
+  get h() { return this.rows * T; },
+  solid(tx, ty) {
+    if (tx < 0 || tx >= this.cols || ty >= this.rows) return true;
+    if (ty < 0) return false;
+    return this.grid[ty][tx] === '#';
+  },
+  hits(b) {
+    const x0 = Math.floor(b.x / T), x1 = Math.floor((b.x + b.w - 0.01) / T);
+    const y0 = Math.floor(b.y / T), y1 = Math.floor((b.y + b.h - 0.01) / T);
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (this.solid(tx, ty)) return true;
+    return false;
+  },
+};
+
+// ============================================================
+// 4. 入力（キーボード＋タッチ）
+// ============================================================
+const Input = {
+  keys: new Set(), stick: {x: 0, y: 0, id: null, ox: 0, oy: 0}, fartQueued: false,
+  axis() {
+    const k = this.keys;
+    let x = (k.has('ArrowRight') || k.has('KeyD') ? 1 : 0) - (k.has('ArrowLeft') || k.has('KeyA') ? 1 : 0);
+    let y = (k.has('ArrowDown') || k.has('KeyS') ? 1 : 0) - (k.has('ArrowUp') || k.has('KeyW') ? 1 : 0);
+    if (this.stick.id !== null) { x = this.stick.x; y = this.stick.y; }
+    const len = Math.hypot(x, y);
+    return len > 1 ? {x: x / len, y: y / len} : {x, y};
+  },
+};
+
+// ============================================================
+// 5. プレイヤー
+// ============================================================
+const Player = {
+  reset() {
+    Object.assign(this, {
+      w: 26, h: 16, x: World.start.x - 13, y: World.start.y - 8, vx: 0, vy: 0, face: 1,
+      o2: CONFIG.O2_MAX, hp: CONFIG.HP_MAX, gas: CONFIG.GAS_START,
+      cool: 0, treasure: 0, kick: 0, boost: 0, hurt: 0,
+    });
+  },
+  get cx() { return this.x + this.w / 2; },
+  get cy() { return this.y + this.h / 2; },
+  inWater() { return this.cy > World.waterTop; },
+  update(dt) {
+    const a = Input.axis(), C = CONFIG;
+    if (a.x) this.face = Math.sign(a.x);
+    if (this.inWater()) {
+      this.vx += a.x * C.SWIM_ACCEL * dt;
+      this.vy += a.y * C.SWIM_ACCEL * dt;
+      const drag = Math.exp(-C.WATER_DRAG * dt);
+      this.vx *= drag; this.vy *= drag;
+      const sp = Math.hypot(this.vx, this.vy);
+      if (sp > C.SWIM_MAX) { const k = Math.exp(-4 * dt); this.vx *= k; this.vy *= k; }
+    } else {
+      this.vy += C.GRAVITY * dt;
+      this.vx += a.x * C.SWIM_ACCEL * 0.3 * dt;
+    }
+    this.kick += dt * (Math.hypot(a.x, a.y) > 0.1 ? 12 : 3);
+    this.boost = Math.max(0, this.boost - dt);
+    this.cool = Math.max(0, this.cool - dt);
+    this.hurt = Math.max(0, this.hurt - dt);
+    this.move(this.vx * dt, this.vy * dt);
+
+    // 酸素とHP
+    const underwater = this.y > World.waterTop - 4;
+    if (underwater) this.o2 = Math.max(0, this.o2 - C.O2_DRAIN * dt);
+    else this.o2 = Math.min(C.O2_MAX, this.o2 + C.O2_SURFACE * dt);
+    if (this.o2 <= 0) { this.hp = Math.max(0, this.hp - C.HP_DRAIN * dt); this.hurt = 0.2; }
+  },
+  move(dx, dy) {
+    const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 4) || 1;
+    for (let i = 0; i < steps; i++) {
+      this.x += dx / steps;
+      if (World.hits(this)) { this.x -= dx / steps; this.vx *= -0.2; dx = 0; }
+      this.y += dy / steps;
+      if (World.hits(this)) { this.y -= dy / steps; this.vy *= -0.2; dy = 0; }
+    }
+  },
+  fart() {
+    if (this.cool > 0) return;
+    if (this.gas <= 0) { FX.text(this.cx, this.y - 10, 'おならが出ない…', '#cfd8e3'); this.cool = 0.6; return; }
+    const a = Input.axis();
+    let dx = a.x, dy = a.y;
+    if (!dx && !dy) dx = this.face;
+    const len = Math.hypot(dx, dy); dx /= len; dy /= len;
+    this.vx += dx * CONFIG.FART_PUSH; this.vy += dy * CONFIG.FART_PUSH;
+    this.gas--; this.cool = CONFIG.FART_COOLDOWN; this.boost = 0.5;
+    const before = this.o2;
+    this.o2 = Math.min(CONFIG.O2_MAX, this.o2 + CONFIG.FART_O2);
+    FX.fartCloud(this.cx - dx * 14, this.cy - dy * 8, -dx, -dy);
+    FX.text(this.cx, this.y - 10, `ぷぅ！ 酸素+${Math.round(this.o2 - before)}`, '#ff9ec4');
+    Sound.fart();
+  },
+};
+
+// ============================================================
+// 6. エフェクト（泡・文字）
+// ============================================================
+const FX = {
+  parts: [], texts: [],
+  bubble(x, y, r = 2 + Math.random() * 2, color = 'rgba(220,245,255,.8)') {
+    this.parts.push({x, y, vx: (Math.random() - .5) * 20, vy: -30 - Math.random() * 30, r, life: 1.6 + Math.random(), color});
+  },
+  fartCloud(x, y, dx, dy) {
+    for (let i = 0; i < 22; i++) {
+      const s = 60 + Math.random() * 120, sp = (Math.random() - .5) * 1.2;
+      const ang = Math.atan2(dy, dx) + sp;
+      this.parts.push({x, y, vx: Math.cos(ang) * s, vy: Math.sin(ang) * s, r: 3 + Math.random() * 5, life: 1 + Math.random() * .8,
+        color: Math.random() < .5 ? 'rgba(200,230,140,.75)' : 'rgba(255,190,215,.75)'});
+    }
+  },
+  text(x, y, s, color) { this.texts.push({x, y, s, color, life: 1.4}); },
+  update(dt) {
+    for (const p of this.parts) {
+      p.vx *= Math.exp(-2 * dt); p.vy = p.vy * Math.exp(-2 * dt) - 40 * dt;
+      p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
+      if (p.y < World.waterTop) p.life = 0;
+    }
+    this.parts = this.parts.filter(p => p.life > 0);
+    for (const t of this.texts) { t.y -= 22 * dt; t.life -= dt; }
+    this.texts = this.texts.filter(t => t.life > 0);
+  },
+};
+
+// ============================================================
+// 7. サウンド（Web Audioで合成。ファイル不要）
+// ============================================================
+const Sound = {
+  ctx: null,
+  init() { if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } this.ctx?.resume?.().catch(() => {}); },
+  fart() {
+    const c = this.ctx; if (!c) return;
+    const t = c.currentTime, dur = 0.45;
+    const o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(95, t); o.frequency.exponentialRampToValueAtTime(55, t + dur);
+    const lfo = c.createOscillator(), lg = c.createGain();
+    lfo.frequency.value = 28; lg.gain.value = 25; lfo.connect(lg); lg.connect(o.frequency);
+    f.type = 'lowpass'; f.frequency.value = 600;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.35, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(f); f.connect(g); g.connect(c.destination);
+    o.start(t); lfo.start(t); o.stop(t + dur); lfo.stop(t + dur);
+  },
+  ding(freq = 880) {
+    const c = this.ctx; if (!c) return;
+    const t = c.currentTime, o = c.createOscillator(), g = c.createGain();
+    o.type = 'triangle'; o.frequency.setValueAtTime(freq, t); o.frequency.setValueAtTime(freq * 1.5, t + 0.08);
+    g.gain.setValueAtTime(0.2, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 0.35);
+  },
+};
+
+// ============================================================
+// 8. ゲーム進行
+// ============================================================
+const Game = {
+  state: 'title', time: 0, total: 0, cam: {x: 0, y: 0}, scale: 1, bubbleT: 0, clock: 0,
+  reset() {
+    World.load(); Player.reset();
+    FX.parts = []; FX.texts = [];
+    this.total = World.items.filter(i => i.type === 'treasure').length;
+    this.time = 0;
+    this.cam.x = Player.cx; this.cam.y = Player.cy;
+  },
+  start() { this.reset(); this.state = 'play'; UI.hide(); },
+  update(dt) {
+    this.clock += dt;
+    if (this.state !== 'play') { FX.update(dt); return; }
+    this.time += dt;
+    if (Input.fartQueued) { Player.fart(); Input.fartQueued = false; }
+    Player.update(dt);
+
+    // アイテム取得
+    for (const it of World.items) {
+      if (it.got || Math.hypot(it.x - Player.cx, it.y - Player.cy) > 24) continue;
+      it.got = true;
+      if (it.type === 'treasure') {
+        Player.treasure++; Sound.ding(880);
+        FX.text(it.x, it.y - 16, `宝物ゲット！ ${Player.treasure}/${this.total}`, '#ffd25e');
+        if (Player.treasure === this.total) FX.text(it.x, it.y + 4, 'スタート地点へ戻ろう！', '#ffffff');
+      } else if (it.type === 'bean') {
+        const add = Math.min(CONFIG.BEAN_GAS, CONFIG.GAS_MAX - Player.gas);
+        Player.gas += add; Sound.ding(520);
+        FX.text(it.x, it.y - 16, add ? `豆を食べた！ おなら+${add}` : 'おなかいっぱい', '#b6f08a');
+      }
+    }
+
+    // ときどき口から泡
+    this.bubbleT -= dt;
+    if (this.bubbleT <= 0 && Player.inWater()) { FX.bubble(Player.cx + Player.face * 12, Player.y + 2); this.bubbleT = 0.5 + Math.random() * .6; }
+    FX.update(dt);
+
+    // クリア判定・ゲームオーバー判定
+    const home = Math.hypot(Player.cx - World.start.x, Player.cy - World.start.y) < 70;
+    if (Player.treasure === this.total && home) { this.state = 'clear'; Sound.ding(1040); UI.show('clear'); }
+    if (Player.hp <= 0) { this.state = 'over'; UI.show('over'); }
+  },
+};
+
+// ============================================================
+// 9. 描画
+// ============================================================
+const cv = document.getElementById('game'), ctx = cv.getContext('2d');
+let vw = 0, vh = 0, dpr = 1;
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  vw = innerWidth; vh = innerHeight;
+  cv.width = vw * dpr; cv.height = vh * dpr;
+  Game.scale = Math.max(0.7, Math.min(3, Math.min(vw, vh) / CONFIG.VIEW));
+}
+addEventListener('resize', resize); resize();
+
+function hash(x, y) { const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return n - Math.floor(n); }
+
+const Render = {
+  draw() {
+    const s = Game.scale, cam = Game.cam;
+    const viewW = vw / s, viewH = vh / s;
+    // カメラ追従（ワールドの外は映さない）
+    cam.x += (Player.cx - cam.x) * 0.12; cam.y += (Player.cy - cam.y) * 0.12;
+    const cx = Math.max(viewW / 2, Math.min(World.w - viewW / 2, cam.x));
+    const cy = Math.max(viewH / 2 - 60, Math.min(World.h - viewH / 2, cam.y));
+    const ox = cx - viewW / 2, oy = cy - viewH / 2;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#061a33'; ctx.fillRect(0, 0, vw, vh);
+    ctx.setTransform(dpr * s, 0, 0, dpr * s, -ox * dpr * s, -oy * dpr * s);
+
+    this.background(ox, oy, viewW, viewH);
+    this.tiles(ox, oy, viewW, viewH);
+    this.boat();
+    this.items();
+    this.player();
+    this.particles();
+    this.surface(ox, viewW);
+    this.texts();
+
+    // 深さに応じて暗くする
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const depth = Math.max(0, Math.min(1, (Player.cy - World.waterTop) / (World.h - World.waterTop - 64)));
+    const px = (Player.cx - ox) * s, py = (Player.cy - oy) * s;
+    const g = ctx.createRadialGradient(px, py, 60 * s, px, py, 260 * s);
+    g.addColorStop(0, 'rgba(2,8,20,0)'); g.addColorStop(1, `rgba(2,8,20,${0.75 * depth})`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, vw, vh);
+    if (Player.hurt > 0) { ctx.fillStyle = `rgba(255,60,60,${0.12 + 0.08 * Math.sin(Game.clock * 12)})`; ctx.fillRect(0, 0, vw, vh); }
+    this.homeArrow(ox, oy, s);
+  },
+  background(ox, oy, w, h) {
+    const wt = World.waterTop;
+    const sky = ctx.createLinearGradient(0, 0, 0, wt);
+    sky.addColorStop(0, '#7fd3f5'); sky.addColorStop(1, '#d6f3ff');
+    ctx.fillStyle = sky; ctx.fillRect(ox, Math.min(oy, -400), w, wt - Math.min(oy, -400));
+    const sea = ctx.createLinearGradient(0, wt, 0, World.h);
+    sea.addColorStop(0, '#1d9cc4'); sea.addColorStop(0.35, '#0f5f8f'); sea.addColorStop(1, '#061e3d');
+    ctx.fillStyle = sea; ctx.fillRect(ox, wt, w, World.h - wt + 200);
+    // 光の筋
+    ctx.save(); ctx.globalAlpha = 0.07; ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 8; i++) {
+      const x = i * 260 + Math.sin(Game.clock * 0.3 + i) * 30;
+      ctx.beginPath(); ctx.moveTo(x, wt); ctx.lineTo(x + 60, wt); ctx.lineTo(x + 220, wt + 520); ctx.lineTo(x + 120, wt + 520); ctx.fill();
+    }
+    ctx.restore();
+  },
+  tiles(ox, oy, w, h) {
+    const x0 = Math.max(0, Math.floor(ox / T)), x1 = Math.min(World.cols - 1, Math.floor((ox + w) / T));
+    const y0 = Math.max(0, Math.floor(oy / T)), y1 = Math.min(World.rows - 1, Math.floor((oy + h) / T));
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+      if (!World.solid(tx, ty)) continue;
+      const x = tx * T, y = ty * T, v = hash(tx, ty);
+      ctx.fillStyle = v < .5 ? '#3b3a4f' : '#34334a';
+      ctx.fillRect(x, y, T + .5, T + .5);
+      if (!World.solid(tx, ty - 1)) {
+        ctx.fillStyle = '#d8c48f'; ctx.fillRect(x, y, T + .5, 6); // 砂
+        if (v > .55) { // 海藻
+          ctx.strokeStyle = v > .8 ? '#3fae6a' : '#e0708c'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(x + 10 + v * 10, y);
+          for (let k = 1; k <= 4; k++) ctx.lineTo(x + 10 + v * 10 + Math.sin(Game.clock * 2 + k + tx) * 4, y - k * 7);
+          ctx.stroke();
+        }
+      } else if (!World.solid(tx - 1, ty) || !World.solid(tx + 1, ty) || !World.solid(tx, ty + 1)) {
+        ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.fillRect(x + 4, y + 4, T - 8, T - 8);
+      }
+    }
+  },
+  boat() {
+    const {x, y} = World.start, wt = World.waterTop, b = Math.sin(Game.clock * 1.5) * 2;
+    ctx.save(); ctx.translate(x, wt + b);
+    ctx.fillStyle = '#f3efe4'; ctx.fillRect(-4, -78, 4, 54);
+    ctx.fillStyle = '#ff7fae'; ctx.beginPath(); ctx.moveTo(0, -76); ctx.lineTo(30, -58); ctx.lineTo(0, -40); ctx.fill();
+    ctx.fillStyle = '#c4533a'; ctx.beginPath(); ctx.moveTo(-50, -24); ctx.lineTo(50, -24); ctx.lineTo(36, 4); ctx.lineTo(-36, 4); ctx.fill();
+    ctx.fillStyle = '#f3efe4'; ctx.fillRect(-46, -24, 92, 5);
+    ctx.fillStyle = '#ffffff'; ctx.font = '800 13px "M PLUS Rounded 1c",sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('スタート', 0, -88);
+    ctx.restore();
+  },
+  items() {
+    for (const it of World.items) {
+      if (it.got) continue;
+      const bob = Math.sin(Game.clock * 2 + it.x) * 3;
+      ctx.save(); ctx.translate(it.x, it.y + bob);
+      if (it.type === 'treasure') {
+        ctx.fillStyle = 'rgba(255,210,94,.25)'; ctx.beginPath(); ctx.arc(0, 0, 20 + Math.sin(Game.clock * 4) * 3, 0, 7); ctx.fill();
+        ctx.fillStyle = '#8a4b1f'; ctx.fillRect(-12, -6, 24, 16);
+        ctx.fillStyle = '#b5652a'; ctx.fillRect(-12, -12, 24, 8);
+        ctx.fillStyle = '#ffd25e'; ctx.fillRect(-12, -6, 24, 3); ctx.fillRect(-3, -6, 6, 8);
+      } else {
+        ctx.fillStyle = '#7fcf4f'; ctx.beginPath(); ctx.ellipse(0, 0, 11, 7, -0.4, 0, 7); ctx.fill();
+        ctx.fillStyle = '#b6f08a'; ctx.beginPath(); ctx.ellipse(-3, -2, 4, 2, -0.4, 0, 7); ctx.fill();
+      }
+      ctx.restore();
+    }
+  },
+  player() {
+    const p = Player, k = Math.sin(p.kick) * 4;
+    ctx.save(); ctx.translate(p.cx, p.cy); ctx.scale(p.face, 1);
+    const tilt = Math.max(-0.5, Math.min(0.5, p.vy / 300)); ctx.rotate(tilt * p.face);
+    if (p.hurt > 0 && Math.sin(Game.clock * 30) > 0) ctx.globalAlpha = 0.6;
+    // 足ひれ
+    ctx.fillStyle = '#ffd25e';
+    ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(-26, -5 + k); ctx.lineTo(-26, 5 + k); ctx.fill();
+    // 体
+    ctx.fillStyle = '#ff8a3d'; ctx.beginPath(); ctx.ellipse(-2, 0, 13, 7, 0, 0, 7); ctx.fill();
+    // タンク
+    ctx.fillStyle = '#c9d6e3'; ctx.fillRect(-10, -11, 14, 5);
+    // 頭とマスク
+    ctx.fillStyle = '#ffd9b8'; ctx.beginPath(); ctx.arc(12, -1, 7, 0, 7); ctx.fill();
+    ctx.fillStyle = '#4fd6f0'; ctx.beginPath(); ctx.ellipse(15, -2, 4, 3.5, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.fillRect(15, -4, 2, 2);
+    if (p.boost > 0) { ctx.fillStyle = `rgba(255,158,196,${p.boost})`; ctx.beginPath(); ctx.arc(-18, 0, 8 * p.boost + 4, 0, 7); ctx.fill(); }
+    ctx.restore();
+  },
+  particles() {
+    for (const p of FX.parts) {
+      ctx.globalAlpha = Math.min(1, p.life);
+      ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  },
+  surface(ox, w) {
+    ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 2; ctx.beginPath();
+    for (let x = Math.floor(ox / 8) * 8; x <= ox + w + 8; x += 8) {
+      const y = World.waterTop + Math.sin(x * 0.04 + Game.clock * 2) * 2;
+      x === Math.floor(ox / 8) * 8 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  },
+  texts() {
+    ctx.textAlign = 'center'; ctx.font = '800 13px "M PLUS Rounded 1c",sans-serif';
+    for (const t of FX.texts) {
+      ctx.globalAlpha = Math.min(1, t.life);
+      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,20,40,.8)'; ctx.strokeText(t.s, t.x, t.y);
+      ctx.fillStyle = t.color; ctx.fillText(t.s, t.x, t.y);
+    }
+    ctx.globalAlpha = 1;
+  },
+  homeArrow(ox, oy, s) {
+    if (Game.state !== 'play' || Player.treasure < Game.total) return;
+    const sx = (World.start.x - ox) * s, sy = (World.start.y - oy) * s;
+    if (sx > 0 && sx < vw && sy > 0 && sy < vh) return;
+    const cx = vw / 2, cy = vh / 2, a = Math.atan2(sy - cy, sx - cx);
+    const r = Math.min(vw, vh) / 2 - 50;
+    ctx.save(); ctx.translate(cx + Math.cos(a) * r, cy + Math.sin(a) * r); ctx.rotate(a);
+    ctx.fillStyle = '#ffd25e'; ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(-10, -12); ctx.lineTo(-4, 0); ctx.lineTo(-10, 12); ctx.fill();
+    ctx.restore();
+  },
+};
+
+// ============================================================
+// 10. HUD と画面オーバーレイ
+// ============================================================
+const $ = id => document.getElementById(id);
+const HELP = `<dl>
+  <dt>泳ぐ</dt><dd>矢印キー / WASD<br>スマホ：画面をドラッグ（どこでもOK）</dd>
+  <dt>おなら</dt><dd>Space / J キー<br>スマホ：右下のピンクのボタン</dd>
+  <dt>一時停止</dt><dd>Esc / H キー、または右上の「?」</dd>
+</dl>
+<p>水中では<b>酸素</b>が減っていき、ゼロになると<b>HP</b>が減ります。水面に出るか<b>おなら</b>で酸素を回復！おならは泳いでいる方向への推進力にもなります。おならは数に限りがあるので、海底の<b>豆</b>を食べて補給しましょう。</p>`;
+
+const UI = {
+  show(kind) {
+    const card = $('card'), p = Player;
+    const time = `${Math.floor(Game.time / 60)}分${String(Math.floor(Game.time % 60)).padStart(2, '0')}秒`;
+    if (kind === 'title') card.innerHTML = `<h1>プクプク<span>海底探検</span></h1>
+      <p>海に沈んだ宝物を${Game.total || 4}つ集めて、スタートの船まで帰ってこよう。</p>${HELP}
+      <button class="go" id="goBtn">はじめる</button>`;
+    if (kind === 'help') card.innerHTML = `<h1>操作方法</h1>${HELP}<button class="go" id="goBtn">つづける</button>`;
+    if (kind === 'clear') card.innerHTML = `<h1>帰還成功！</h1><div class="big">タイム ${time}</div>
+      <p>宝物 ${p.treasure}/${Game.total}・残りHP ${Math.ceil(p.hp)}・おなら残り ${p.gas}</p><button class="go" id="goBtn">もう一度あそぶ</button>`;
+    if (kind === 'over') card.innerHTML = `<h1>力尽きた…</h1><p>酸素切れに注意。深く潜る前におならの残りを確認しよう。</p>
+      <p>集めた宝物 ${p.treasure}/${Game.total}</p><button class="go" id="goBtn">リトライ</button>`;
+    $('overlay').hidden = false;
+    $('goBtn').onclick = () => { Sound.init(); kind === 'help' ? UI.resume() : Game.start(); };
+    $('goBtn').focus();
+  },
+  hide() { $('overlay').hidden = true; },
+  pause() { if (Game.state === 'play') { Game.state = 'pause'; UI.show('help'); } },
+  resume() { if (Game.state === 'pause') { Game.state = 'play'; UI.hide(); } },
+  hud() {
+    const p = Player;
+    $('o2').style.width = (p.o2 / CONFIG.O2_MAX * 100) + '%';
+    $('hp').style.width = (p.hp / CONFIG.HP_MAX * 100) + '%';
+    $('o2').parentElement.classList.toggle('low', p.o2 < 25);
+    $('hp').parentElement.classList.toggle('low', p.o2 <= 0);
+    const gasHtml = Array.from({length: CONFIG.GAS_MAX}, (_, i) => `<b class="${i < p.gas ? '' : 'off'}"></b>`).join('');
+    if ($('gas').innerHTML !== gasHtml) $('gas').innerHTML = gasHtml;
+    $('fartBtn').classList.toggle('empty', p.gas <= 0);
+    const done = p.treasure >= Game.total;
+    const goal = done ? `<span class="t">船へ帰還せよ！</span><br>黄色の矢印の方向へ`
+                      : `<span class="t">宝物 ${p.treasure} / ${Game.total}</span><br>海底や洞窟を探そう`;
+    if ($('goal').innerHTML !== goal) $('goal').innerHTML = goal;
+  },
+};
+
+// ============================================================
+// 11. イベント登録
+// ============================================================
+addEventListener('keydown', e => {
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
+  Sound.init();
+  if (e.code === 'Escape' || e.code === 'KeyH') { Game.state === 'play' ? UI.pause() : UI.resume(); return; }
+  if ((e.code === 'Space' || e.code === 'KeyJ') && !e.repeat) {
+    if (Game.state === 'play') Input.fartQueued = true;
+    else if ($('overlay').hidden === false && Game.state !== 'pause') $('goBtn').click();
+    return;
+  }
+  if (e.code === 'Enter' && !$('overlay').hidden) { $('goBtn').click(); return; }
+  Input.keys.add(e.code);
+});
+addEventListener('keyup', e => Input.keys.delete(e.code));
+addEventListener('blur', () => Input.keys.clear());
+
+// タッチ用バーチャルスティック（画面のどこでもドラッグで操作）
+const stickEl = $('stick'), knob = $('knob'), R = 50;
+cv.addEventListener('pointerdown', e => {
+  Sound.init();
+  if (Game.state !== 'play' || Input.stick.id !== null) return;
+  Object.assign(Input.stick, {id: e.pointerId, ox: e.clientX, oy: e.clientY, x: 0, y: 0});
+  cv.setPointerCapture(e.pointerId);
+  stickEl.style.display = 'block'; stickEl.style.left = e.clientX + 'px'; stickEl.style.top = e.clientY + 'px';
+  knob.style.transform = '';
+});
+cv.addEventListener('pointermove', e => {
+  const st = Input.stick; if (e.pointerId !== st.id) return;
+  let dx = e.clientX - st.ox, dy = e.clientY - st.oy;
+  const len = Math.hypot(dx, dy); if (len > R) { dx *= R / len; dy *= R / len; }
+  st.x = Math.abs(dx) < 6 ? 0 : dx / R; st.y = Math.abs(dy) < 6 ? 0 : dy / R;
+  knob.style.transform = `translate(${dx}px,${dy}px)`;
+});
+const endStick = e => { if (e.pointerId !== Input.stick.id) return; Object.assign(Input.stick, {id: null, x: 0, y: 0}); stickEl.style.display = 'none'; };
+cv.addEventListener('pointerup', endStick); cv.addEventListener('pointercancel', endStick);
+
+const fartBtn = $('fartBtn');
+fartBtn.addEventListener('pointerdown', e => { e.preventDefault(); Sound.init(); fartBtn.classList.add('press'); if (Game.state === 'play') Input.fartQueued = true; });
+['pointerup', 'pointerleave', 'pointercancel'].forEach(n => fartBtn.addEventListener(n, () => fartBtn.classList.remove('press')));
+$('helpBtn').addEventListener('click', () => Game.state === 'play' ? UI.pause() : UI.resume());
+document.addEventListener('visibilitychange', () => { if (document.hidden) UI.pause(); });
+if (!matchMedia('(pointer:coarse)').matches) fartBtn.querySelector('small').textContent = 'Space';
+else fartBtn.querySelector('small').textContent = '';
+
+// ============================================================
+// 12. メインループ
+// ============================================================
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  Game.update(dt);
+  Render.draw();
+  UI.hud();
+  requestAnimationFrame(loop);
+}
+Game.reset();
+UI.show('title');
+requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>
