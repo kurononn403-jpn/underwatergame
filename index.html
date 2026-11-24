@@ -33,15 +33,16 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 #o2.fart{background:linear-gradient(90deg,#c9a400,var(--fartair))}
 #o2Label.fart{color:var(--fartair)}
 #hp{background:linear-gradient(90deg,#e04848,var(--hp))}
-#gas{background:linear-gradient(90deg,#d9578a,var(--gas))}
-/* おなら呼吸に必要な量の目印（黄色い線）。足りていると光る */
+#gas{background:linear-gradient(90deg,#c99400,#ffd84d)}
+/* おなら呼吸に必要な量の目印（白い線）。足りていると光る */
 .gaswrap{position:relative}
 #gasMark{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1.5px;border-radius:2px;background:rgba(255,255,255,.35)}
-#gasMark.ready{background:var(--fartair);box-shadow:0 0 6px var(--fartair)}
+#gasMark.ready{background:#fff;box-shadow:0 0 6px #fff,0 0 2px #000}
 .low{animation:blink .5s steps(2) infinite}
 @keyframes blink{50%{opacity:.35}}
 #goal{background:var(--panel);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:8px 12px;font-size:13px;font-weight:800;line-height:1.35}
 #goal .t{color:var(--gold);font-size:17px}
+#goal .deep{color:#9fd8ff}
 #helpBtn{pointer-events:auto;width:44px;height:44px;border-radius:50%;background:var(--panel);border:1px solid rgba(255,255,255,.25);font-size:20px;font-weight:800;flex:none}
 
 .left{display:flex;gap:10px;align-items:flex-start;min-width:0}
@@ -229,6 +230,10 @@ const CONFIG = {
   STUN_TIME: 1.8,          // 噴射のガスを浴びた敵がひるむ（無害になる）時間
   STUN_RANGE: 95,          // 噴射のガスが届く距離
 
+  DEEP_ROW: 34,            // マップのこの行より下が深海
+  DEEP_O2_MULT: 1.7,       // 深海の最深部での酸素の減りの倍率（深いほど増える）
+  METERS_PER_TILE: 1.5,    // 水深表示：1マスあたりのメートル
+
   SWIM_ACCEL: 650,
   SWIM_MAX: 165,
   UP_FACTOR: 0.55,         // 上向きに泳ぐ力の倍率（小さいほど浮きにくい）
@@ -282,6 +287,38 @@ const MAP = [
   "###########################......##..H.....#####.........T..",
   "#############################....F.....###########..........",
   "##############################......###############.........",
+  "###############################....###################....##",
+  "###############################....###################....##",
+  "#####AAAA######################....###################....##",
+  "#####AAAA#############.......................#########....##",
+  "####......................................................##",
+  "####..........................F...........................##",
+  "##.............J......................J...................##",
+  "##.................###########..............#######.......##",
+  "##.................###########..............#######.......##",
+  "##.................###########..............#######.......##",
+  "##..........B...........................F...#######..H....##",
+  "#####.....................................................##",
+  "########..############################################...###",
+  "########..############################################...###",
+  "########..############################################...###",
+  "##AA####..############################################...###",
+  "##AA####PP#################################AAAA#######...###",
+  "##..PPP#PP#PPPPPPPPPPPPPPPPP###############AAAA#######...###",
+  "##..PPP#PP#PPPPPPPPPPPPPPPPP######........................##",
+  "##PP#PP#PP#PP#PP####PP#PP#PP######..............H.........##",
+  "##PPPPP#PPPPPPPP#PPPPPPPP#PP##............................##",
+  "##PPPPP#PPPPPPPP#PPPPPPPP#PP##......#####.................##",
+  "##PP#PP#PP#######PP####PP#PP##......#####...F.............##",
+  "##PP#PPPPPPPPPPPPPPPPPPPPPPP##......#####.........J.......##",
+  "##PP#PPPPPPPPPPPPPPPPPPPPPPP##......#####.................##",
+  "##PP###################PP#PP##.................######.....##",
+  "##PPPPP#PPPPPPTPPPPPPP#PPPPP##.................######.....##",
+  "##PPPPP#PPPPPPPPPPPPPP#PPPPP##.................######.....##",
+  "#####PP####PP#PP####PP#PP#PP##............J...............##",
+  "##PPPPPPPPPPPPPP#PPPPPPPP#PPPP...B......................T.##",
+  "##PPPPPPPPPPPPPP#PPPPPPPP#PPPP............................##",
+  "############################################################",
   "############################################################",
   "############################################################",
 ];
@@ -319,6 +356,9 @@ const World = {
   tile(x, y) { return this.grid[Math.floor(y / T)]?.[Math.floor(x / T)]; },
   isAir(x, y) { return y < this.waterTop || this.tile(x, y) === 'A'; },   // 水面より上か空気だまり
   isPoison(x, y) { return this.tile(x, y) === 'P'; },
+  // 深海の深さ（0＝深海の入口より上、1＝最深部）
+  deepness(y) { const top = CONFIG.DEEP_ROW * T; return Math.max(0, Math.min(1, (y - top) / (this.h - top - 2 * T))); },
+  inDeep(y) { return y > CONFIG.DEEP_ROW * T; },
   hits(b) {
     const x0 = Math.floor(b.x / T), x1 = Math.floor((b.x + b.w - 0.01) / T);
     const y0 = Math.floor(b.y / T), y1 = Math.floor((b.y + b.h - 0.01) / T);
@@ -353,7 +393,7 @@ const Player = {
       w: 26, h: 16, x: World.start.x - 13, y: World.start.y - 8, vx: 0, vy: 0, face: 1,
       o2: CONFIG.O2_MAX, hp: CONFIG.HP_MAX, gas: CONFIG.GAS_START,
       treasure: 0, kick: 0, hurt: 0, inv: 0, msgCool: 0,
-      jetting: false, jetDir: {x: 1, y: 0}, fartAir: false, poisoned: false,
+      jetting: false, jetDir: {x: 1, y: 0}, fartAir: false, poisoned: false, wasDeep: false,
     });
   },
   get cx() { return this.x + this.w / 2; },
@@ -411,7 +451,8 @@ const Player = {
 
     // 酸素とHP
     if (this.underwater()) {
-      this.o2 = Math.max(0, this.o2 - C.O2_DRAIN * (this.fartAir ? C.FART_AIR_O2_MULT : 1) * dt);
+      const deepMult = 1 + (C.DEEP_O2_MULT - 1) * World.deepness(this.cy);   // 深いほど酸素の減りが速い
+      this.o2 = Math.max(0, this.o2 - C.O2_DRAIN * deepMult * (this.fartAir ? C.FART_AIR_O2_MULT : 1) * dt);
     } else {
       // 水面・空気だまりで息をしている：酸素回復、HPもゆっくり回復（船のそばでは一気に）
       this.o2 = Math.min(C.O2_MAX, this.o2 + C.O2_SURFACE * dt);
@@ -425,6 +466,10 @@ const Player = {
     }
     if (this.o2 <= 0) { this.hp = Math.max(0, this.hp - C.HP_DRAIN * dt); this.hurt = 0.2; }
     else if (this.fartAir) this.hp = Math.max(0, this.hp - C.FART_AIR_HP_DRAIN * dt);
+
+    const deepNow = World.inDeep(this.cy);
+    if (deepNow && !this.wasDeep) { this.say('深海…酸素の減りが速くなる', '#9fd8ff'); this.msgCool = 2.5; }
+    this.wasDeep = deepNow;
 
     // 毒ガス：HPと酸素が減る。おなら呼吸の泡の中なら防げる
     const inPoison = World.isPoison(this.cx, this.cy);
@@ -522,7 +567,7 @@ const Enemies = {
 // ============================================================
 // 6b. 心拍（ゲームには影響しない演出）
 //     80bpmから、酸素・体力の消耗、おなら呼吸、毒、被弾で上がり、最大200bpm。
-//     酸素ゼロで体力が限界に近づくと、逆に急激に落ちていく。
+//     酸素ゼロで体力が10以下になると、逆に急激に落ちていく。
 // ============================================================
 // 心電図の波形（拍動からの経過秒数 → 高さ）。1/60秒刻みでサンプルされるので、QRSはその刻みに合わせてある
 function ecgWave(tb, period) {
@@ -540,19 +585,19 @@ const Heart = {
   spike(n) { if (!this.dying) this.bpm = Math.min(200, this.bpm + n); },
   target() {
     const P = Player, C = CONFIG;
-    this.dying = P.o2 <= 0 && P.hp < 30;
-    if (this.dying) return 38 + ((P.hp / 30) ** 2) * 120;   // 限界が近いほど急激に落ちる
+    this.dying = P.o2 <= 0 && P.hp <= 10;
+    if (this.dying) return 30 + ((P.hp / 10) ** 2) * 90;    // 限界が近いほど急激に落ちる
     let t = 80;
     if (P.o2 < 50) t += (1 - P.o2 / 50) * 55;              // 酸素の消耗
     t += (1 - P.hp / C.HP_MAX) * 45;                        // 体力の消耗
     if (P.fartAir) t += 35;                                 // 臭くて苦しい
     if (P.poisoned) t += 15;
     if (P.jetting) t += 6;
-    if (P.underwater()) t += Game.depth * 10;               // 深いほど不安
+    if (P.underwater()) t += Game.depth * 10 + World.deepness(P.cy) * 12; // 深いほど不安
     return Math.min(200, t);
   },
   update(dt) {
-    const tgt = this.target(), rate = this.dying ? 1.6 : (tgt > this.bpm ? 0.9 : 0.35);
+    const tgt = this.target(), rate = this.dying ? 3 : (tgt > this.bpm ? 0.9 : 0.35);
     this.bpm += (tgt - this.bpm) * (1 - Math.exp(-rate * dt));
     const step = 1 / 60, N = this.trace.length;
     this.acc += dt;
@@ -1136,10 +1181,11 @@ const HELP = `<dl>
   <dt>一時停止</dt><dd>Esc / H キー、または右上の「?」</dd>
 </dl>
 <p>スライムの体は重くて<b>沈みやすく、上に泳ぐのは苦手</b>。押している間だけおならゲージを使って<b>噴射</b>し、すいすい進もう。</p>
-<p>酸素が尽きそうなら最終手段の<b class="y">おなら呼吸</b>。おならゲージを半分使って酸素を大きく回復します。ゲージが<b class="y">黄色い線</b>を超えていれば使えます（黄色いボタンのリングが一周した状態）。ただし黄色い泡に包まれておならで息をすることになり、水面に出るまで<b>酸素の減りが速く、HPも少しずつ減ります</b>。</p>
+<p>酸素が尽きそうなら最終手段の<b class="y">おなら呼吸</b>。おならゲージを半分使って酸素を大きく回復します。ゲージが<b>白い線</b>を超えていれば使えます（黄色いボタンのリングが一周した状態）。ただし黄色い泡に包まれておならで息をすることになり、水面に出るまで<b>酸素の減りが速く、HPも少しずつ減ります</b>。</p>
 <p>クラゲやトゲトゲ魚に当たるとダメージ。噴射の<b>後ろに出るガス</b>を浴びせると、敵はひるんでしばらく無害になります。</p>
 <p>緑のもやは<b>毒ガス</b>。中にいるとHPと酸素が減ります（おなら呼吸の泡の中なら防げます）。洞窟の天井の<b>空気だまり</b>に顔を出せば、水面と同じく息ができてHPも少しずつ回復。<b>船のそば</b>ではHPが一気に回復し、<b>貝</b>を拾ってもHPが回復します。</p>
-<p>おならは時間でわずかにたまり、海底の<b>豆</b>でも補給できます。ピンチになるほど視界が狭まっていくので注意。</p>`;
+<p>おならは時間でわずかにたまり、海底の<b>豆</b>でも補給できます。ピンチになるほど視界が狭まっていくので注意。</p>
+<p>さらに深い<b>深海</b>では、深く潜るほど酸素の減りが速くなります。毒ガスの迷路の奥には宝物と、毒のない小さな空気だまりが隠れています。</p>`;
 
 const UI = {
   show(kind) {
@@ -1178,8 +1224,10 @@ const UI = {
     $('breathBtn').style.setProperty('--p', Math.min(1, p.gas / CONFIG.BREATH_GAS).toFixed(3));
     Heart.draw();
     const done = p.treasure >= Game.total;
-    const goal = done ? `<span class="t">船へ帰還せよ！</span><br>黄色の矢印の方向へ`
-                      : `<span class="t">宝物 ${p.treasure} / ${Game.total}</span><br>海底や洞窟を探そう`;
+    const m = Math.max(0, Math.round((p.cy - World.waterTop) / T * CONFIG.METERS_PER_TILE));
+    const depth = World.inDeep(p.cy) ? `<span class="deep">水深 ${m}m・深海</span>` : `水深 ${m}m`;
+    const goal = done ? `<span class="t">船へ帰還せよ！</span><br>黄色の矢印の方向へ・${depth}`
+                      : `<span class="t">宝物 ${p.treasure} / ${Game.total}</span><br>${depth}`;
     if ($('goal').innerHTML !== goal) $('goal').innerHTML = goal;
   },
 };
