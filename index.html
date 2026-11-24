@@ -19,7 +19,7 @@ LAYOUT: 全画面ゲーム、左上に計器、右下におならボタン2つ
 html,body{margin:0;height:100%;overflow:hidden;background:#061a33;color:var(--ink);
   font:16px/1.5 "M PLUS Rounded 1c","Hiragino Maru Gothic ProN",system-ui,sans-serif;
   touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+#game{position:fixed;inset:0;width:100%;height:100%;display:block}
 button{font:inherit;color:inherit;cursor:pointer;border:0}
 button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 
@@ -42,7 +42,18 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 @keyframes blink{50%{opacity:.35}}
 #goal{background:var(--panel);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:8px 12px;font-size:13px;font-weight:800;line-height:1.35}
 #goal .t{color:var(--gold);font-size:17px}
-#helpBtn{pointer-events:auto;margin-left:auto;width:44px;height:44px;border-radius:50%;background:var(--panel);border:1px solid rgba(255,255,255,.25);font-size:20px;font-weight:800;flex:none}
+#helpBtn{pointer-events:auto;width:44px;height:44px;border-radius:50%;background:var(--panel);border:1px solid rgba(255,255,255,.25);font-size:20px;font-weight:800;flex:none}
+
+.left{display:flex;gap:10px;align-items:flex-start;min-width:0}
+.right{margin-left:auto;display:flex;gap:8px;align-items:flex-start;flex:none}
+/* 心拍モニター（演出のみ） */
+#heartBox{background:var(--panel);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:6px 10px 7px;
+  display:grid;grid-template-columns:auto 1fr;column-gap:8px;row-gap:2px;align-items:center}
+#heartIcon{width:22px;height:22px;fill:var(--hp);display:block}
+#heartNum{font-weight:800;line-height:1;white-space:nowrap}
+#bpm{font-size:20px;font-variant-numeric:tabular-nums}
+#heartNum small{font-size:11px;opacity:.75;margin-left:3px}
+#ecg{grid-column:1/-1;width:96px;height:26px;display:block}
 
 .fbtn{position:fixed;border-radius:50%;font-weight:800;line-height:1.1;touch-action:none}
 .fbtn small{display:block;font-size:11px;opacity:.8}
@@ -82,7 +93,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .card .go{width:100%;min-height:52px;border-radius:14px;background:var(--gold);color:#3a2600;font-weight:800;font-size:18px;box-shadow:0 4px 0 #b88a14}
 .card .go:active{transform:translateY(3px);box-shadow:0 1px 0 #b88a14}
 .y{color:var(--fartair)}
-@media(max-width:600px){.row{font-size:12px}#goal{font-size:12px}#goal .t{font-size:15px}}
+@media(max-width:600px){.left{flex-direction:column;gap:6px}.right{flex-direction:column;align-items:flex-end}.row{font-size:12px}#goal{font-size:12px}#goal .t{font-size:15px}}
 @media(prefers-reduced-motion:reduce){.low,#breathBtn.ready{animation:none}}
 </style>
 </head>
@@ -90,13 +101,22 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 <canvas id="game"></canvas>
 
 <div id="hud">
+  <div class="left">
   <div class="gauges">
     <div class="row"><span id="o2Label">酸素</span><div class="bar"><i id="o2"></i></div></div>
     <div class="row"><span>HP</span><div class="bar"><i id="hp"></i></div></div>
     <div class="row"><span>おなら</span><div class="gaswrap"><div class="bar"><i id="gas"></i></div><b id="gasMark" title="ここを超えるとおなら呼吸できる"></b></div></div>
   </div>
   <div id="goal"></div>
-  <button id="helpBtn" aria-label="一時停止と操作方法">?</button>
+  </div>
+  <div class="right">
+    <div id="heartBox" aria-label="心拍数">
+      <svg id="heartIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+      <div id="heartNum"><span id="bpm">80</span><small>bpm</small></div>
+      <canvas id="ecg"></canvas>
+    </div>
+    <button id="helpBtn" aria-label="一時停止と操作方法">?</button>
+  </div>
 </div>
 
 <button id="breathBtn" class="fbtn" tabindex="-1" aria-label="おなら呼吸">おなら<br>呼吸<small>K</small></button>
@@ -127,6 +147,7 @@ const ASSETS = {
     bean:     {src: '', w: 24, h: 18},                      // 豆
     rock:     {src: '', w: 32, h: 32},                      // 岩1マス（上に砂と海藻が重なります）
     boat:     {src: '', w: 110, h: 90},                     // スタートの船（下端が水面）
+    shell:    {src: '', w: 26, h: 22},                      // 回復の貝
   },
   sounds: {
     jet:        {src: '', volume: 0.6},  // おなら噴射（長押し中ループ）
@@ -137,6 +158,9 @@ const ASSETS = {
     clear:      {src: '', volume: 0.8},  // 帰還成功
     alarm:      {src: '', volume: 0.6},  // 酸素残りわずか（くり返し鳴る）
     alarmEmpty: {src: '', volume: 0.7},  // 酸素ゼロ（速くくり返し鳴る）
+    heal:       {src: '', volume: 0.8},  // 貝でHP回復
+    stun:       {src: '', volume: 0.7},  // 噴射のガスで敵がひるんだ
+    heartbeat:  {src: '', volume: 1.0},  // 心音（心拍が速いときや危険なときに鳴る。音量は自動で変わる）
   },
 };
 
@@ -197,6 +221,14 @@ const CONFIG = {
   BEAN_GAS: 35,            // 豆を拾ったときのおなら回復量
   O2_LOW: 25,              // これ以下で警告音（ゼロになると速い警告音）
 
+  AIR_HEAL: 2,             // 水面・空気だまりで息をしている間、1秒あたり回復するHP
+  BOAT_HEAL: 25,           // 船のそばで1秒あたり回復するHP
+  SHELL_HEAL: 35,          // 回復の貝で回復するHP
+  POISON_HP: 4,            // 毒ガスの中で1秒あたり減るHP
+  POISON_O2: 5,            // 毒ガスの中で1秒あたり余分に減る酸素
+  STUN_TIME: 1.8,          // 噴射のガスを浴びた敵がひるむ（無害になる）時間
+  STUN_RANGE: 95,          // 噴射のガスが届く距離
+
   SWIM_ACCEL: 650,
   SWIM_MAX: 165,
   UP_FACTOR: 0.55,         // 上向きに泳ぐ力の倍率（小さいほど浮きにくい）
@@ -213,6 +245,7 @@ const CONFIG = {
 // 2. マップ（1文字=1マス）
 //    ' ' 空  '.' 水  '#' 岩  'S' スタート  'T' 宝物  'B' 豆（おなら補給）
 //    'F' トゲトゲ魚（左右に泳ぐ）  'J' クラゲ（上下に漂う）
+//    'A' 空気だまり（水中の空気。顔を出すと息ができる）  'P' 毒ガス  'H' 回復の貝
 // ============================================================
 const MAP = [
   "                                                            ",
@@ -227,26 +260,26 @@ const MAP = [
   "####....B...............................######..............",
   "#####................J................#########.............",
   "#######..............................##########.............",
-  "#########...........................####....###.....T.......",
+  "#########...........................####AAAA###.....T.......",
   "##########.........................####......###.....F......",
   "###########......................#####...B..................",
   "############....................######...####..##...........",
-  "#############.................#######..######..###..........",
-  "##############...............#######..##...##...###......J..",
-  "###############............#########..#..T..#...####........",
-  "################.....J....##########..#.....#...#####.......",
+  "#############.................#######PP######..###..........",
+  "##############...............#######PP##...##...###......J..",
+  "###############............#########PP#..T..#...####........",
+  "################.....J....##########PP#.....#...#####.......",
   "#################.........##########..###.###...######......",
-  "##################........##########..........#########.....",
+  "##################........##########..........#########..H..",
   "###################.......#####################.#######.....",
   "####################.......####################..######.....",
   "#####################.......###################...#####.....",
-  "######################........#########.......B...####......",
-  "#######################.................F..............#....",
-  "########################.............................###....",
-  "#########################.....######################.####...",
+  "######################...PPPPP#########.......B...####......",
+  "#######################..PPPPPPPPP......F..............#....",
+  "########################.PPPPPPPPP...................###....",
+  "#########################PPPPP######################.####...",
   "##########################...##################.....###...J.",
-  "###########################..#########.....T........##......",
-  "###########################......##........#####.........T..",
+  "###########################..#########.AAAAT........##......",
+  "###########################......##..H.....#####.........T..",
   "#############################....F.....###########..........",
   "##############################......###############.........",
   "############################################################",
@@ -271,7 +304,8 @@ const World = {
       if (c === 'B') this.items.push({type: 'bean', x: cx, y: cy, got: false});
       if (c === 'F') this.spawns.push({type: 'fish', x: cx, y: cy});
       if (c === 'J') this.spawns.push({type: 'jelly', x: cx, y: cy});
-      if ('STBFJ'.includes(c)) row[tx] = ty * T >= this.waterTop ? '.' : ' ';
+      if (c === 'H') this.items.push({type: 'shell', x: cx, y: cy, got: false});
+      if ('STBFJH'.includes(c)) row[tx] = ty * T >= this.waterTop ? '.' : ' ';
     }));
   },
   get w() { return this.cols * T; },
@@ -282,6 +316,9 @@ const World = {
     return this.grid[ty][tx] === '#';
   },
   solidAt(x, y) { return this.solid(Math.floor(x / T), Math.floor(y / T)); },
+  tile(x, y) { return this.grid[Math.floor(y / T)]?.[Math.floor(x / T)]; },
+  isAir(x, y) { return y < this.waterTop || this.tile(x, y) === 'A'; },   // 水面より上か空気だまり
+  isPoison(x, y) { return this.tile(x, y) === 'P'; },
   hits(b) {
     const x0 = Math.floor(b.x / T), x1 = Math.floor((b.x + b.w - 0.01) / T);
     const y0 = Math.floor(b.y / T), y1 = Math.floor((b.y + b.h - 0.01) / T);
@@ -316,13 +353,14 @@ const Player = {
       w: 26, h: 16, x: World.start.x - 13, y: World.start.y - 8, vx: 0, vy: 0, face: 1,
       o2: CONFIG.O2_MAX, hp: CONFIG.HP_MAX, gas: CONFIG.GAS_START,
       treasure: 0, kick: 0, hurt: 0, inv: 0, msgCool: 0,
-      jetting: false, jetDir: {x: 1, y: 0}, fartAir: false,
+      jetting: false, jetDir: {x: 1, y: 0}, fartAir: false, poisoned: false,
     });
   },
   get cx() { return this.x + this.w / 2; },
   get cy() { return this.y + this.h / 2; },
-  inWater() { return this.cy > World.waterTop; },
-  underwater() { return this.y > World.waterTop - 4; },
+  inWater() { return !World.isAir(this.cx, this.cy); },
+  underwater() { return !World.isAir(this.cx, this.y + 4); },   // 頭が空気に出ていなければ水中
+  nearBoat() { return Math.abs(this.cx - World.start.x) < 80 && this.y < World.waterTop + 24; },
   update(dt) {
     const a = Input.axis(), C = CONFIG, water = this.inWater();
     if (a.x) this.face = Math.sign(a.x);
@@ -348,6 +386,7 @@ const Player = {
         this.gas = Math.max(0, this.gas - C.JET_RATE * dt);
         this.jetting = true; this.jetDir = {x: dx, y: dy};
         for (let i = 0; i < 2; i++) FX.jetPuff(this.cx - dx * 16, this.cy - dy * 10, -dx, -dy);
+        Enemies.blast(this.cx, this.cy, dx, dy); // 後ろに出るガスで敵をひるませる
         if (!wasJetting) { Game.flashOn(); Sound.jetStart(); }
         if (this.gas <= 0) this.say('おならが切れた…', '#cfd8e3');
       } else if (!wasJetting && this.msgCool <= 0) {
@@ -374,11 +413,27 @@ const Player = {
     if (this.underwater()) {
       this.o2 = Math.max(0, this.o2 - C.O2_DRAIN * (this.fartAir ? C.FART_AIR_O2_MULT : 1) * dt);
     } else {
+      // 水面・空気だまりで息をしている：酸素回復、HPもゆっくり回復（船のそばでは一気に）
       this.o2 = Math.min(C.O2_MAX, this.o2 + C.O2_SURFACE * dt);
       if (this.fartAir) { this.fartAir = false; FX.text(this.cx, this.y - 12, 'ぷはっ！ 新鮮な空気', '#ffffff'); }
+      if (this.hp < C.HP_MAX) this.hp = Math.min(C.HP_MAX, this.hp + C.AIR_HEAL * dt);
+    }
+    // 船のそば（水面付近）にいる間は、波で上下していてもHPが一気に回復
+    if (this.nearBoat() && this.hp < C.HP_MAX) {
+      this.hp = Math.min(C.HP_MAX, this.hp + C.BOAT_HEAL * dt);
+      if (this.msgCool <= 0) { this.say('船で休憩…HP回復', '#b6f08a'); this.msgCool = 2; }
     }
     if (this.o2 <= 0) { this.hp = Math.max(0, this.hp - C.HP_DRAIN * dt); this.hurt = 0.2; }
     else if (this.fartAir) this.hp = Math.max(0, this.hp - C.FART_AIR_HP_DRAIN * dt);
+
+    // 毒ガス：HPと酸素が減る。おなら呼吸の泡の中なら防げる
+    const inPoison = World.isPoison(this.cx, this.cy);
+    this.poisoned = inPoison && !this.fartAir;
+    if (this.poisoned) {
+      this.hp = Math.max(0, this.hp - C.POISON_HP * dt);
+      this.o2 = Math.max(0, this.o2 - C.POISON_O2 * dt);
+      if (this.msgCool <= 0) { this.say('ゴホッ…毒ガスだ', '#b6f08a'); this.msgCool = 2.5; }
+    } else if (inPoison && this.msgCool <= 0) { this.say('泡が毒を防いでいる', '#ffe14d'); this.msgCool = 3; }
   },
   move(dx, dy) {
     const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 4) || 1;
@@ -409,7 +464,7 @@ const Player = {
     let dx = this.cx - ex, dy = this.cy - ey; const len = Math.hypot(dx, dy) || 1;
     this.vx = dx / len * CONFIG.KNOCKBACK; this.vy = dy / len * CONFIG.KNOCKBACK;
     FX.text(this.cx, this.y - 12, `いたっ！ -${CONFIG.ENEMY_DAMAGE}`, '#ff8080');
-    Sound.hit();
+    Sound.hit(); Heart.spike(25);
   },
 };
 
@@ -420,24 +475,115 @@ const Enemies = {
   list: [],
   load() {
     this.list = World.spawns.map((s, i) => s.type === 'fish'
-      ? {type: 'fish', x: s.x, y: s.y, baseY: s.y, vx: (i % 2 ? -1 : 1) * 60, r: 11, puff: 0, ph: i * 1.7}
-      : {type: 'jelly', x: s.x, y: s.y, baseX: s.x, baseY: s.y, r: 13, ph: i * 2.3});
+      ? {type: 'fish', x: s.x, y: s.y, baseY: s.y, vx: (i % 2 ? -1 : 1) * 60, r: 11, puff: 0, ph: i * 1.7, stun: 0, kx: 0, ky: 0}
+      : {type: 'jelly', x: s.x, y: s.y, baseX: s.x, baseY: s.y, r: 13, ph: i * 2.3, stun: 0, kx: 0, ky: 0});
+  },
+  // 噴射のガス：プレイヤーの真後ろ（扇形）にいる敵をひるませて押し流す
+  blast(px, py, dx, dy) {
+    const R = CONFIG.STUN_RANGE;
+    for (const e of this.list) {
+      const ex = e.x - px, ey = e.y - py, d = Math.hypot(ex, ey);
+      if (d > R || d < 1 || (ex * -dx + ey * -dy) / d < 0.55) continue;
+      if (e.stun <= 0) { FX.text(e.x, e.y - 20, 'ひるんだ！', '#c8f08a'); Sound.stun(); }
+      e.stun = CONFIG.STUN_TIME;
+      const push = 60 + 220 * (1 - d / R);
+      e.kx = -dx * push; e.ky = -dy * push;
+    }
   },
   update(dt) {
     for (const e of this.list) {
       const near = Math.hypot(Player.cx - e.x, Player.cy - e.y);
+      const stunned = e.stun > 0;
+      if (stunned) {
+        // 押し流される（岩には入らない）
+        e.stun -= dt;
+        const mx = e.kx * dt, my = e.ky * dt, k = Math.exp(-3 * dt);
+        e.kx *= k; e.ky *= k;
+        if (!World.solidAt(e.x + mx + Math.sign(mx) * e.r, e.y)) { if (e.type === 'fish') e.x += mx; else e.baseX += mx; }
+        if (!World.solidAt(e.x, e.y + my + Math.sign(my) * e.r)) e.baseY += my;
+      }
       if (e.type === 'fish') {
-        const nx = e.x + e.vx * dt;
-        if (World.solidAt(nx + Math.sign(e.vx) * (e.r + 4), e.y)) e.vx = -e.vx; else e.x = nx;
+        if (!stunned) {
+          const nx = e.x + e.vx * dt;
+          if (World.solidAt(nx + Math.sign(e.vx) * (e.r + 4), e.y)) e.vx = -e.vx; else e.x = nx;
+        }
         e.y = e.baseY + Math.sin(Game.clock * 2 + e.ph) * 6;
-        e.puff += ((near < 110 ? 1 : 0) - e.puff) * Math.min(1, dt * 5);
+        e.puff += ((near < 110 && !stunned ? 1 : 0) - e.puff) * Math.min(1, dt * 5);
         e.r = 11 + e.puff * 6;
       } else {
         e.y = e.baseY + Math.sin(Game.clock * 0.9 + e.ph) * 40;
         e.x = e.baseX + Math.sin(Game.clock * 0.4 + e.ph) * 14;
       }
-      if (near < e.r + 10) Player.hit(e.x, e.y);
+      if (!stunned && near < e.r + 10) Player.hit(e.x, e.y);
     }
+  },
+};
+
+// ============================================================
+// 6b. 心拍（ゲームには影響しない演出）
+//     80bpmから、酸素・体力の消耗、おなら呼吸、毒、被弾で上がり、最大200bpm。
+//     酸素ゼロで体力が限界に近づくと、逆に急激に落ちていく。
+// ============================================================
+// 心電図の波形（拍動からの経過秒数 → 高さ）。1/60秒刻みでサンプルされるので、QRSはその刻みに合わせてある
+function ecgWave(tb, period) {
+  const s = 1 / 60;
+  if (tb < s) return -0.15 * tb / s;
+  if (tb < 2 * s) return -0.15 + 1.15 * (tb - s) / s;
+  if (tb < 3 * s) return 1 - 1.35 * (tb - 2 * s) / s;
+  if (tb < 4 * s) return -0.35 + 0.35 * (tb - 3 * s) / s;
+  const tc = Math.min(0.3, period * 0.42);
+  return 0.22 * Math.exp(-(((tb - tc) / 0.045) ** 2));
+}
+const Heart = {
+  bpm: 80, tb: 0, acc: 0, dying: false, trace: new Float32Array(100), head: 0,
+  reset() { this.bpm = 80; this.tb = 0; this.acc = 0; this.dying = false; this.trace.fill(0); this.head = 0; },
+  spike(n) { if (!this.dying) this.bpm = Math.min(200, this.bpm + n); },
+  target() {
+    const P = Player, C = CONFIG;
+    this.dying = P.o2 <= 0 && P.hp < 30;
+    if (this.dying) return 38 + ((P.hp / 30) ** 2) * 120;   // 限界が近いほど急激に落ちる
+    let t = 80;
+    if (P.o2 < 50) t += (1 - P.o2 / 50) * 55;              // 酸素の消耗
+    t += (1 - P.hp / C.HP_MAX) * 45;                        // 体力の消耗
+    if (P.fartAir) t += 35;                                 // 臭くて苦しい
+    if (P.poisoned) t += 15;
+    if (P.jetting) t += 6;
+    if (P.underwater()) t += Game.depth * 10;               // 深いほど不安
+    return Math.min(200, t);
+  },
+  update(dt) {
+    const tgt = this.target(), rate = this.dying ? 1.6 : (tgt > this.bpm ? 0.9 : 0.35);
+    this.bpm += (tgt - this.bpm) * (1 - Math.exp(-rate * dt));
+    const step = 1 / 60, N = this.trace.length;
+    this.acc += dt;
+    while (this.acc >= step) {
+      this.acc -= step; this.tb += step;
+      const period = 60 / this.bpm;
+      if (this.tb >= period) { this.tb = 0; this.beat(period); }
+      this.trace[this.head] = ecgWave(this.tb, period); this.head = (this.head + 1) % N;
+    }
+  },
+  beat(period) {
+    if (!reduceMotion) $('heartIcon').animate([{transform: 'scale(1.3)'}, {transform: 'scale(1)'}], {duration: Math.min(220, period * 500), easing: 'ease-out'});
+    if (Game.state === 'play' && (this.bpm >= 115 || this.dying)) Sound.heartbeat(this.dying ? 0.3 : Math.min(0.22, (this.bpm - 105) / 400));
+  },
+  color() { return this.dying || this.bpm >= 150 ? '#ff6b6b' : this.bpm >= 110 ? '#ffe14d' : '#7dffa8'; },
+  draw() {
+    const cv = $('ecg'), r = Math.min(window.devicePixelRatio || 1, 2), w = 96, h = 26;
+    if (cv.width !== w * r) { cv.width = w * r; cv.height = h * r; }
+    const g = cv.getContext('2d'), N = this.trace.length;
+    g.setTransform(r, 0, 0, r, 0, 0); g.clearRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(0, h * 0.62); g.lineTo(w, h * 0.62); g.stroke();
+    g.strokeStyle = this.color(); g.lineWidth = 1.6; g.lineJoin = 'round'; g.beginPath();
+    for (let i = 0; i < N; i++) {
+      const v = this.trace[(this.head + i) % N], x = i / (N - 1) * w, y = h * 0.62 - v * h * 0.5;
+      i ? g.lineTo(x, y) : g.moveTo(x, y);
+    }
+    g.stroke();
+    const num = String(Math.round(this.bpm));
+    if ($('bpm').textContent !== num) $('bpm').textContent = num;
+    $('bpm').style.color = this.color();
   },
 };
 
@@ -466,7 +612,7 @@ const FX = {
     for (const p of this.parts) {
       p.vx *= Math.exp(-2 * dt); p.vy = p.vy * Math.exp(-2 * dt) - 40 * dt;
       p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
-      if (p.y < World.waterTop) p.life = 0;
+      if (World.isAir(p.x, p.y)) p.life = 0;
     }
     this.parts = this.parts.filter(p => p.life > 0);
     for (const t of this.texts) { t.y -= 22 * dt; t.life -= dt; }
@@ -485,9 +631,9 @@ const Sound = {
     Assets.decode(this.ctx);
   },
   // 自作の音声ファイルがあれば鳴らして、止めるためのハンドルを返す。なければ null（合成音を使う）
-  file(k, loop = false) {
+  file(k, loop = false, mul = 1) {
     const a = ASSETS.sounds[k]; if (!a?.src) return null;
-    const c = this.ctx, b = Assets.buf[k], vol = a.volume ?? 1;
+    const c = this.ctx, b = Assets.buf[k], vol = (a.volume ?? 1) * mul;
     if (c && b) {
       const s = c.createBufferSource(), g = c.createGain();
       s.buffer = b; s.loop = loop; g.gain.value = vol; s.connect(g); g.connect(c.destination); s.start();
@@ -546,6 +692,27 @@ const Sound = {
     });
   },
   treasure() { if (!this.file('treasure')) this.ding(880); },
+  heal() { if (!this.file('heal')) this.ding(700); },
+  // 心音「ドクッ、ドクン」。vol は心拍に合わせて 0〜0.3 程度
+  heartbeat(vol) {
+    if (this.file('heartbeat', false, vol / 0.3)) return;
+    const c = this.ctx; if (!c) return;
+    const t = c.currentTime;
+    [[0, 62, vol], [0.13, 50, vol * 0.7]].forEach(([d, fq, v]) => {
+      const o = c.createOscillator(), g = c.createGain(), s = t + d;
+      o.type = 'sine'; o.frequency.setValueAtTime(fq, s); o.frequency.exponentialRampToValueAtTime(fq * 0.6, s + 0.1);
+      g.gain.setValueAtTime(0.0001, s); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, v), s + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, s + 0.12);
+      o.connect(g); g.connect(c.destination); o.start(s); o.stop(s + 0.13);
+    });
+  },
+  stun() {
+    if (this.file('stun')) return;
+    const c = this.ctx; if (!c) return;
+    const t = c.currentTime, o = c.createOscillator(), g = c.createGain();
+    o.type = 'triangle'; o.frequency.setValueAtTime(420, t); o.frequency.exponentialRampToValueAtTime(140, t + 0.2);
+    g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 0.22);
+  },
   bean() { if (!this.file('bean')) this.ding(520); },
   clear() { if (!this.file('clear')) this.ding(1040); },
   hit() {
@@ -571,12 +738,12 @@ const Sound = {
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const Game = {
   state: 'title', time: 0, total: 0, cam: {x: 0, y: 0}, scale: 1, bubbleT: 0, clock: 0, dt: 0, flash: 0, alarmT: 0,
-  vis: {dark: 0, yellow: 0}, // 視界の悪さ（0〜1）
+  vis: {dark: 0, yellow: 0, green: 0}, depth: 0, // 視界の悪さ（0〜1）、深さ（0〜1）
   reset() {
-    World.load(); Player.reset(); Enemies.load();
+    World.load(); Player.reset(); Enemies.load(); Heart.reset();
     FX.parts = []; FX.texts = [];
     this.total = World.items.filter(i => i.type === 'treasure').length;
-    this.time = 0; this.flash = 0; this.alarmT = 0; this.vis = {dark: 0, yellow: 0};
+    this.time = 0; this.flash = 0; this.alarmT = 0; this.vis = {dark: 0, yellow: 0, green: 0};
     this.cam.x = Player.cx; this.cam.y = Player.cy;
   },
   start() { Input.clear(); this.reset(); this.state = 'play'; UI.hide(); },
@@ -589,6 +756,8 @@ const Game = {
     if (Input.breathQueued) { Player.breathe(); Input.breathQueued = false; }
     Player.update(dt);
     Enemies.update(dt);
+    this.depth = Math.max(0, Math.min(1, (Player.cy - World.waterTop) / (World.h - World.waterTop - 64)));
+    Heart.update(dt);
 
     // アイテム取得
     for (const it of World.items) {
@@ -597,6 +766,11 @@ const Game = {
         it.got = true; Player.treasure++; Sound.treasure();
         FX.text(it.x, it.y - 16, `宝物ゲット！ ${Player.treasure}/${this.total}`, '#ffd25e');
         if (Player.treasure === this.total) FX.text(it.x, it.y + 4, 'スタート地点へ戻ろう！', '#ffffff');
+      } else if (it.type === 'shell' && Player.hp < CONFIG.HP_MAX) { // HP満タンのときは残しておく
+        it.got = true;
+        const add = Math.min(CONFIG.SHELL_HEAL, CONFIG.HP_MAX - Player.hp);
+        Player.hp += add; Sound.heal();
+        FX.text(it.x, it.y - 16, `貝の力でHP回復 +${Math.round(add)}`, '#ffc6dc');
       } else if (it.type === 'bean' && Player.gas < CONFIG.GAS_MAX) { // 満タンのときは豆を残しておく
         it.got = true;
         const add = Math.min(CONFIG.BEAN_GAS, CONFIG.GAS_MAX - Player.gas);
@@ -623,11 +797,14 @@ const Game = {
     // 視界の悪さ（ピンチほど外側から狭まる）
     const lost = 1 - P.hp / C.HP_MAX;
     const pinch = Math.max(P.o2 < C.O2_LOW ? (1 - P.o2 / C.O2_LOW) * 0.3 : 0, P.hp < 50 ? (1 - P.hp / 50) * 0.4 : 0);
-    const darkTarget = P.o2 <= 0 ? 0.35 + 0.6 * lost : pinch;       // 酸素ゼロ：HPが減るほど黒く
-    const yellowTarget = P.fartAir ? 0.25 + 0.7 * lost : 0;          // おなら呼吸：HPが減るほど黄色く
+    // おなら呼吸中は、酸素が尽きても黒ではなく黄色のまま狭まっていく
+    const darkTarget = P.fartAir ? 0 : P.o2 <= 0 ? 0.35 + 0.6 * lost : pinch; // 酸素ゼロ：HPが減るほど黒く
+    const yellowTarget = P.fartAir ? 0.25 + 0.7 * lost : 0;                    // おなら呼吸：HPが減るほど黄色く
+    const greenTarget = P.poisoned ? 0.35 : 0;                                 // 毒ガスの中：緑にかすむ
     const k = 1 - Math.exp(-2.5 * dt);
     this.vis.dark += (darkTarget - this.vis.dark) * k;
     this.vis.yellow += (yellowTarget - this.vis.yellow) * k;
+    this.vis.green += (greenTarget - this.vis.green) * k;
 
     // ゲームオーバー判定を先に、その後クリア判定
     if (Player.hp <= 0) { this.state = 'over'; Sound.jetStop(); UI.show('over'); return; }
@@ -640,12 +817,15 @@ const Game = {
 // 10. 描画
 // ============================================================
 const cv = document.getElementById('game'), ctx = cv.getContext('2d');
-let vw = 0, vh = 0, dpr = 1;
+let vw = 0, vh = 0, dpr = 1, hudPad = 120;
+// 画面上端のHUDに船の「スタート」が隠れないよう、カメラの上の余白をHUDの高さに合わせる
+function measureHud() { hudPad = document.getElementById('hud').getBoundingClientRect().bottom + 24; }
 function resize() {
   dpr = Math.min(window.devicePixelRatio || 1, 2);
   vw = innerWidth; vh = innerHeight;
   cv.width = vw * dpr; cv.height = vh * dpr;
   Game.scale = Math.max(0.7, Math.min(3, Math.min(vw, vh) / CONFIG.VIEW));
+  measureHud();
 }
 addEventListener('resize', resize); resize();
 
@@ -659,7 +839,7 @@ const Render = {
     const k = 1 - Math.exp(-7 * Game.dt);
     cam.x += (Player.cx - cam.x) * k; cam.y += (Player.cy - cam.y) * k;
     const cx = Math.max(viewW / 2, Math.min(World.w - viewW / 2, cam.x));
-    const cy = Math.max(viewH / 2 - 120 / s, Math.min(World.h - viewH / 2, cam.y));
+    const cy = Math.max(viewH / 2 - hudPad / s, Math.min(World.h - viewH / 2, cam.y));
     const ox = cx - viewW / 2, oy = cy - viewH / 2;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -685,6 +865,7 @@ const Render = {
     ctx.fillStyle = g; ctx.fillRect(0, 0, vw, vh);
     // ピンチの視界：酸素ゼロは黒、おなら呼吸は黄色が外側から迫ってくる
     const far = Math.max(Math.hypot(px, py), Math.hypot(vw - px, py), Math.hypot(px, vh - py), Math.hypot(vw - px, vh - py));
+    this.vignette(px, py, far, s, Game.vis.green, '40,110,20', 0.75);
     this.vignette(px, py, far, s, Game.vis.yellow, '150,130,10', 0.92);
     this.vignette(px, py, far, s, Game.vis.dark, '0,0,0', 0.97);
     if (Player.hurt > 0) {
@@ -727,6 +908,9 @@ const Render = {
     const y0 = Math.max(0, Math.floor(oy / T)), y1 = Math.min(World.rows - 1, Math.floor((oy + h) / T));
     const rockImg = Assets.img.rock;
     for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+      const c = World.grid[ty][tx];
+      if (c === 'A') { this.airTile(tx, ty); continue; }
+      if (c === 'P') { this.poisonTile(tx, ty); continue; }
       if (!World.solid(tx, ty)) continue;
       const x = tx * T, y = ty * T, v = hash(tx, ty);
       if (rockImg) ctx.drawImage(rockImg, x, y, T + .5, T + .5);
@@ -742,6 +926,28 @@ const Render = {
       } else if (!rockImg && (!World.solid(tx - 1, ty) || !World.solid(tx + 1, ty) || !World.solid(tx, ty + 1))) {
         ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.fillRect(x + 4, y + 4, T - 8, T - 8);
       }
+    }
+  },
+  // 空気だまり：明るい空気と、下側の水面
+  airTile(tx, ty) {
+    const x = tx * T, y = ty * T;
+    ctx.fillStyle = 'rgba(190,232,250,.88)'; ctx.fillRect(x, y, T + .5, T + .5);
+    const below = World.grid[ty + 1]?.[tx];
+    if (below && below !== 'A' && below !== '#') {
+      ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 2; ctx.beginPath();
+      for (let k = 0; k <= 4; k++) { const wx = x + k * T / 4, wy = y + T + Math.sin(wx * 0.04 + Game.clock * 2) * 2; k ? ctx.lineTo(wx, wy) : ctx.moveTo(wx, wy); }
+      ctx.stroke();
+    }
+  },
+  // 毒ガス：ゆらぐ緑のもやと、のぼる泡
+  poisonTile(tx, ty) {
+    const x = tx * T, y = ty * T, v = hash(tx, ty);
+    ctx.fillStyle = `rgba(120,200,50,${0.2 + 0.06 * Math.sin(Game.clock * 2 + tx + ty)})`; ctx.fillRect(x, y, T + .5, T + .5);
+    ctx.fillStyle = 'rgba(190,240,110,.55)';
+    for (let k = 0; k < 2; k++) {
+      const by = y + T - ((Game.clock * 14 + (v + k * 0.5) * T) % T);
+      const bx = x + (0.2 + v * 0.4 + k * 0.3) * T + Math.sin(Game.clock * 2 + k + tx) * 3;
+      ctx.beginPath(); ctx.arc(bx, by, 2.2, 0, 7); ctx.fill();
     }
   },
   boat() {
@@ -772,6 +978,15 @@ const Render = {
           ctx.fillStyle = '#b5652a'; ctx.fillRect(-12, -12, 24, 8);
           ctx.fillStyle = '#ffd25e'; ctx.fillRect(-12, -6, 24, 3); ctx.fillRect(-3, -6, 6, 8);
         }
+      } else if (it.type === 'shell') {
+        ctx.fillStyle = 'rgba(255,180,210,.22)'; ctx.beginPath(); ctx.arc(0, 0, 18, 0, 7); ctx.fill();
+        if (!Assets.draw('shell', 0, 0, Game.clock)) {
+          ctx.fillStyle = '#f6c7d6'; ctx.beginPath(); ctx.moveTo(0, 8); ctx.arc(0, 8, 14, Math.PI * 1.12, Math.PI * 1.88); ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = '#d98fa8'; ctx.lineWidth = 1.5; ctx.beginPath();
+          for (let i = -2; i <= 2; i++) { ctx.moveTo(0, 8); ctx.lineTo(Math.sin(i * 0.28) * 13, 8 - Math.cos(i * 0.28) * 13); }
+          ctx.stroke();
+          ctx.fillStyle = '#e8a9be'; ctx.fillRect(-4, 6, 8, 4);
+        }
       } else if (!Assets.draw('bean', 0, 0, Game.clock)) {
         ctx.fillStyle = '#7fcf4f'; ctx.beginPath(); ctx.ellipse(0, 0, 11, 7, -0.4, 0, 7); ctx.fill();
         ctx.fillStyle = '#b6f08a'; ctx.beginPath(); ctx.ellipse(-3, -2, 4, 2, -0.4, 0, 7); ctx.fill();
@@ -782,6 +997,7 @@ const Render = {
   enemies() {
     for (const e of Enemies.list) {
       ctx.save(); ctx.translate(e.x, e.y);
+      if (e.stun > 0) { ctx.globalAlpha = 0.55; ctx.rotate(Math.sin(Game.clock * 8) * 0.35); } // ひるんで力が抜けている
       if (e.type === 'fish') {
         ctx.scale(e.vx < 0 ? -1 : 1, 1);
         if (!Assets.draw('fish', 0, 0, Game.clock + e.ph, 1 + e.puff * 0.5)) this.fish(e);
@@ -921,7 +1137,9 @@ const HELP = `<dl>
 </dl>
 <p>スライムの体は重くて<b>沈みやすく、上に泳ぐのは苦手</b>。押している間だけおならゲージを使って<b>噴射</b>し、すいすい進もう。</p>
 <p>酸素が尽きそうなら最終手段の<b class="y">おなら呼吸</b>。おならゲージを半分使って酸素を大きく回復します。ゲージが<b class="y">黄色い線</b>を超えていれば使えます（黄色いボタンのリングが一周した状態）。ただし黄色い泡に包まれておならで息をすることになり、水面に出るまで<b>酸素の減りが速く、HPも少しずつ減ります</b>。</p>
-<p>クラゲやトゲトゲ魚に当たるとダメージ。おならは時間でわずかにたまり、海底の<b>豆</b>でも補給できます。ピンチになるほど視界が狭まっていくので注意。</p>`;
+<p>クラゲやトゲトゲ魚に当たるとダメージ。噴射の<b>後ろに出るガス</b>を浴びせると、敵はひるんでしばらく無害になります。</p>
+<p>緑のもやは<b>毒ガス</b>。中にいるとHPと酸素が減ります（おなら呼吸の泡の中なら防げます）。洞窟の天井の<b>空気だまり</b>に顔を出せば、水面と同じく息ができてHPも少しずつ回復。<b>船のそば</b>ではHPが一気に回復し、<b>貝</b>を拾ってもHPが回復します。</p>
+<p>おならは時間でわずかにたまり、海底の<b>豆</b>でも補給できます。ピンチになるほど視界が狭まっていくので注意。</p>`;
 
 const UI = {
   show(kind) {
@@ -958,6 +1176,7 @@ const UI = {
     $('breathBtn').classList.toggle('empty', !canBreathe);
     $('breathBtn').classList.toggle('ready', canBreathe && p.o2 < CONFIG.O2_LOW && p.underwater());
     $('breathBtn').style.setProperty('--p', Math.min(1, p.gas / CONFIG.BREATH_GAS).toFixed(3));
+    Heart.draw();
     const done = p.treasure >= Game.total;
     const goal = done ? `<span class="t">船へ帰還せよ！</span><br>黄色の矢印の方向へ`
                       : `<span class="t">宝物 ${p.treasure} / ${Game.total}</span><br>海底や洞窟を探そう`;
@@ -1028,10 +1247,11 @@ if (matchMedia('(pointer:coarse)').matches) document.querySelectorAll('.fbtn sma
 // ============================================================
 // 13. メインループ
 // ============================================================
-let last = performance.now();
+let last = performance.now(), frame = 0;
 function loop(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   Game.update(dt);
+  if ((frame = (frame + 1) % 30) === 0) measureHud();
   Render.draw();
   UI.hud();
   requestAnimationFrame(loop);
