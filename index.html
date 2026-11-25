@@ -478,7 +478,7 @@ const Player = {
       this.hp = Math.max(0, this.hp - C.POISON_HP * dt);
       this.o2 = Math.max(0, this.o2 - C.POISON_O2 * dt);
       if (this.msgCool <= 0) { this.say('ゴホッ…毒ガスだ', '#b6f08a'); this.msgCool = 2.5; }
-    } else if (inPoison && this.msgCool <= 0) { this.say('泡が毒を防いでいる', '#ffe14d'); this.msgCool = 3; }
+    } else if (inPoison && this.msgCool <= 0) { this.say('くさい…', '#ffe14d'); this.msgCool = 3; }
   },
   move(dx, dy) {
     const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 4) || 1;
@@ -492,7 +492,7 @@ const Player = {
   say(s, color) { FX.text(this.cx, this.y - 12, s, color); this.msgCool = 0.8; },
   // おなら呼吸：緊急用。黄色い泡に包まれ、水面に出るまでおならで呼吸する
   breathe() {
-    if (!this.underwater()) { if (this.msgCool <= 0) this.say('ここは空気がある！', '#ffffff'); return; }
+    if (!this.underwater()) { if (this.msgCool <= 0) this.say('はぁ…くさかった…', '#ffffff'); return; }
     if (this.gas < CONFIG.BREATH_GAS) { if (this.msgCool <= 0) this.say(`おならが足りない（${CONFIG.BREATH_GAS}%必要）`, '#cfd8e3'); return; }
     this.gas -= CONFIG.BREATH_GAS;
     const before = this.o2;
@@ -500,7 +500,7 @@ const Player = {
     this.fartAir = true;
     Game.flashOn(); Sound.breathe();
     FX.fartBurst(this.cx, this.cy);
-    this.say(`すぅ…おなら呼吸！ 酸素+${Math.round(this.o2 - before)}`, '#ffe14d');
+    this.say(`すぅ…げほっ！ 酸素+${Math.round(this.o2 - before)}`, '#ffe14d');
   },
   hit(ex, ey) {
     if (this.inv > 0) return;
@@ -529,7 +529,7 @@ const Enemies = {
     for (const e of this.list) {
       const ex = e.x - px, ey = e.y - py, d = Math.hypot(ex, ey);
       if (d > R || d < 1 || (ex * -dx + ey * -dy) / d < 0.55) continue;
-      if (e.stun <= 0) { FX.text(e.x, e.y - 20, 'ひるんだ！', '#c8f08a'); Sound.stun(); }
+      if (e.stun <= 0) { FX.text(e.x, e.y - 20, 'くさい！', '#c8f08a'); Sound.stun(); }
       e.stun = CONFIG.STUN_TIME;
       const push = 60 + 220 * (1 - d / R);
       e.kx = -dx * push; e.ky = -dy * push;
@@ -590,7 +590,7 @@ const Heart = {
     let t = 80;
     if (P.o2 < 50) t += (1 - P.o2 / 50) * 55;              // 酸素の消耗
     t += (1 - P.hp / C.HP_MAX) * 45;                        // 体力の消耗
-    if (P.fartAir) t += 35;                                 // 臭くて苦しい
+    if (P.fartAir) t += 55;                                 // 臭くて苦しい
     if (P.poisoned) t += 15;
     if (P.jetting) t += 6;
     if (P.underwater()) t += Game.depth * 10 + World.deepness(P.cy) * 12; // 深いほど不安
@@ -643,7 +643,7 @@ const FX = {
   jetPuff(x, y, dx, dy) {
     const s = 80 + Math.random() * 120, ang = Math.atan2(dy, dx) + (Math.random() - .5) * 0.9;
     this.parts.push({x, y, vx: Math.cos(ang) * s, vy: Math.sin(ang) * s, r: 2.5 + Math.random() * 4, life: 0.7 + Math.random() * .6,
-      color: Math.random() < .5 ? 'rgba(200,230,140,.75)' : 'rgba(255,190,215,.75)'});
+      color: Math.random() < .5 ? 'rgba(230,230,100,.75)' : 'rgba(250,250,120,.75)'});
   },
   fartBurst(x, y) {
     for (let i = 0; i < 26; i++) {
@@ -984,11 +984,11 @@ const Render = {
       ctx.stroke();
     }
   },
-  // 毒ガス：ゆらぐ緑のもやと、のぼる泡
+  // 毒ガス：ゆらぐ黄色のもやと、のぼる泡
   poisonTile(tx, ty) {
     const x = tx * T, y = ty * T, v = hash(tx, ty);
-    ctx.fillStyle = `rgba(120,200,50,${0.2 + 0.06 * Math.sin(Game.clock * 2 + tx + ty)})`; ctx.fillRect(x, y, T + .5, T + .5);
-    ctx.fillStyle = 'rgba(190,240,110,.55)';
+    ctx.fillStyle = `rgba(206,206,14,${0.2 + 0.06 * Math.sin(Game.clock * 2 + tx + ty)})`; ctx.fillRect(x, y, T + .5, T + .5);
+    ctx.fillStyle = 'rgba(226,226,54,.55)';
     for (let k = 0; k < 2; k++) {
       const by = y + T - ((Game.clock * 14 + (v + k * 0.5) * T) % T);
       const bx = x + (0.2 + v * 0.4 + k * 0.3) * T + Math.sin(Game.clock * 2 + k + tx) * 3;
